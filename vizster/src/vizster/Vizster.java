@@ -19,9 +19,9 @@ import vizster.color.BrowsingColorFunction;
 import vizster.color.ComparisonColorFunction;
 import vizster.render.VizsterRendererFactory;
 import vizster.util.ProfilePanel;
-import vizster.util.SearchPanel;
 import vizster.util.VizsterMenuBar;
 import edu.berkeley.guir.prefuse.Display;
+import edu.berkeley.guir.prefuse.EdgeItem;
 import edu.berkeley.guir.prefuse.FocusManager;
 import edu.berkeley.guir.prefuse.ItemRegistry;
 import edu.berkeley.guir.prefuse.NodeItem;
@@ -37,6 +37,9 @@ import edu.berkeley.guir.prefuse.activity.ActionList;
 import edu.berkeley.guir.prefuse.activity.SlowInSlowOutPacer;
 import edu.berkeley.guir.prefuse.event.FocusEvent;
 import edu.berkeley.guir.prefuse.event.FocusListener;
+import edu.berkeley.guir.prefuse.focus.DefaultFocusSet;
+import edu.berkeley.guir.prefuse.focus.FocusSet;
+import edu.berkeley.guir.prefuse.focus.PrefixSearchFocusSet;
 import edu.berkeley.guir.prefuse.graph.DefaultGraph;
 import edu.berkeley.guir.prefuse.graph.Entity;
 import edu.berkeley.guir.prefuse.graph.Graph;
@@ -44,9 +47,7 @@ import edu.berkeley.guir.prefuse.graph.GraphLib;
 import edu.berkeley.guir.prefuse.graph.Node;
 import edu.berkeley.guir.prefuse.graph.event.GraphLoaderListener;
 import edu.berkeley.guir.prefuse.graph.external.GraphLoader;
-import edu.berkeley.guir.prefuse.util.DefaultFocusSet;
-import edu.berkeley.guir.prefuse.util.FocusSet;
-import edu.berkeley.guir.prefuse.util.KeywordSearchFocusSet;
+import edu.berkeley.guir.prefuse.util.PrefixSearchPanel;
 import edu.berkeley.guir.prefusex.controls.DragControl;
 import edu.berkeley.guir.prefusex.controls.FocusControl;
 import edu.berkeley.guir.prefusex.controls.NeighborHighlightControl;
@@ -97,7 +98,7 @@ public class Vizster extends JFrame {
     // ui components
     private Display display;
     private ProfilePanel profile;
-    private SearchPanel searcher;
+    private PrefixSearchPanel searcher;
     
     // number of login attempts before application exits
     private int loginRetries = 5;
@@ -154,7 +155,7 @@ public class Vizster extends JFrame {
         FocusManager fmanager = registry.getFocusManager();
         fmanager.putFocusSet(CLICK_KEY, new DefaultFocusSet());
         fmanager.putFocusSet(MOUSE_KEY, new DefaultFocusSet());
-        final KeywordSearchFocusSet searchSet = new KeywordSearchFocusSet();
+        final PrefixSearchFocusSet searchSet = new PrefixSearchFocusSet();
         fmanager.putFocusSet(SEARCH_KEY, searchSet);
         
         if ( useDatabase ) {
@@ -178,7 +179,8 @@ public class Vizster extends JFrame {
         // create the panel which shows friendster profile data
         profile = new ProfilePanel(this);
         // create the search panel
-        searcher = new SearchPanel(this);
+        searcher = new PrefixSearchPanel(VizsterDBLoader.ALL_COLUMNS,
+                registry, searchSet, fmanager.getFocusSet(CLICK_KEY));
         
         // initialize the prefuse renderers and action lists
         initPrefuse();
@@ -351,12 +353,16 @@ public class Vizster extends JFrame {
             private float normal = 2E-5f;
             private float slack1 = 2E-6f;
             private float slack2 = 2E-7f;
-            protected float getSpringLength(NodeItem n1, NodeItem n2) {
+            protected float getSpringLength(EdgeItem e) {
+                NodeItem n1 = (NodeItem)e.getFirstNode();
+                NodeItem n2 = (NodeItem)e.getSecondNode();
                 int minE = Math.min(n1.getEdgeCount(),n2.getEdgeCount());
                 double doi = Math.max(n1.getDOI(), n2.getDOI());
                 return ( minE == 1 ? 75.f : (doi==0? 200.f : 100.f));
             } //
-            protected float getSpringCoefficient(NodeItem n1, NodeItem n2) {
+            protected float getSpringCoefficient(EdgeItem e) {
+                NodeItem n1 = (NodeItem)e.getFirstNode();
+                NodeItem n2 = (NodeItem)e.getSecondNode();
                 int maxE = Math.max(n1.getEdgeCount(),n2.getEdgeCount());
                 if ( maxE <= 80 )
                     return normal;

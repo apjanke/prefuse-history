@@ -29,8 +29,8 @@ import vizster.color.ComparisonColorFunction;
 import edu.berkeley.guir.prefuse.FocusManager;
 import edu.berkeley.guir.prefuse.event.FocusEvent;
 import edu.berkeley.guir.prefuse.event.FocusListener;
+import edu.berkeley.guir.prefuse.focus.PrefixSearchFocusSet;
 import edu.berkeley.guir.prefuse.graph.Entity;
-import edu.berkeley.guir.prefuse.util.KeywordSearchFocusSet;
 
 /**
  * Displays profile contents and controls for visualizing individual
@@ -47,7 +47,7 @@ public class ProfilePanel extends JPanel {
     
     private Vizster vizster;
     private Entity curProfile;
-    private KeywordSearchFocusSet searcher;
+    private PrefixSearchFocusSet searcher;
     private HighlightPainter hlp = new DefaultHighlighter
                                        .DefaultHighlightPainter(Color.YELLOW);
     
@@ -57,7 +57,7 @@ public class ProfilePanel extends JPanel {
         initUI();
         
         FocusManager fmanager = vizster.getItemRegistry().getFocusManager();
-        searcher = (KeywordSearchFocusSet)fmanager.getFocusSet(Vizster.SEARCH_KEY);
+        searcher = (PrefixSearchFocusSet)fmanager.getFocusSet(Vizster.SEARCH_KEY);
         searcher.addFocusListener(new FocusListener() {
             public void focusChanged(FocusEvent e) {
                 updateTextHighlight();

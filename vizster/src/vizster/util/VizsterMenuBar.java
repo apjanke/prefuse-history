@@ -8,6 +8,8 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.KeyStroke;
 
+import edu.berkeley.guir.prefuse.util.display.ExportDisplayAction;
+
 import vizster.Vizster;
 
 /**
@@ -19,9 +21,10 @@ import vizster.Vizster;
 public class VizsterMenuBar extends JMenuBar {
 
     static final String DBUG = "Toggle Debug Display";
-    static final String LOAD = "Load Network from File...";
+    static final String LOAD = "Open Network File...";
     static final String CONN = "Connect to Network Database...";
-    static final String SAVE = "Save Visible Network...";
+    static final String SAVE = "Save Visible Network to File...";
+    static final String EXPT = "Export Display Image...";
     static final String EXIT = "Exit";
     static final String GOTO = "Go To Profile...";
     static final String FSIM = "Configure Force Simulator...";
@@ -48,6 +51,7 @@ public class VizsterMenuBar extends JMenuBar {
         JMenuItem loadI = new JMenuItem(LOAD);
         JMenuItem connI = new JMenuItem(CONN);
         JMenuItem saveI = new JMenuItem(SAVE);
+        JMenuItem exptI = new JMenuItem(EXPT);
         JMenuItem exitI = new JMenuItem(EXIT);
         JMenuItem gotoI = new JMenuItem(GOTO);
         JMenuItem fsimI = new JMenuItem(FSIM);
@@ -63,7 +67,9 @@ public class VizsterMenuBar extends JMenuBar {
         buttG.add(cmapI);
         
         dbugI.setAccelerator(KeyStroke.getKeyStroke("ctrl D"));
+        loadI.setAccelerator(KeyStroke.getKeyStroke("ctrl O"));
         saveI.setAccelerator(KeyStroke.getKeyStroke("ctrl S"));
+        exptI.setAccelerator(KeyStroke.getKeyStroke("ctrl E"));
         gotoI.setAccelerator(KeyStroke.getKeyStroke("ctrl G"));
         fsimI.setAccelerator(KeyStroke.getKeyStroke("ctrl F"));
         animI.setAccelerator(KeyStroke.getKeyStroke("ctrl K"));
@@ -76,6 +82,7 @@ public class VizsterMenuBar extends JMenuBar {
         loadI.setActionCommand(LOAD);
         connI.setActionCommand(CONN);
         saveI.setActionCommand(SAVE);
+        exptI.setActionCommand(EXPT);
         gotoI.setActionCommand(GOTO);
         fsimI.setActionCommand(FSIM);
         animI.setActionCommand(ANIM);
@@ -91,6 +98,7 @@ public class VizsterMenuBar extends JMenuBar {
         connI.addActionListener(loadAction);
         
         saveI.addActionListener(new SaveVisibleNetworkAction(vizster));
+        exptI.addActionListener(new ExportDisplayAction(vizster.getDisplay()));
         exitI.addActionListener(new ExitAction());
         gotoI.addActionListener(new GotoAction(vizster));
         fsimI.addActionListener(new ForceConfigAction(vizster));
@@ -107,6 +115,7 @@ public class VizsterMenuBar extends JMenuBar {
         fileM.add(loadI);
         fileM.add(connI);
         fileM.add(saveI);
+        fileM.add(exptI);
         fileM.add(exitI);
         laytM.add(animI);
         laytM.add(laytI);
