@@ -34,7 +34,7 @@ import edu.berkeley.guir.prefuse.util.FocusSet;
 import edu.berkeley.guir.prefuse.util.KeywordSearchFocusSet;
 
 /**
- * 
+ * Provides keyword search over the currently visualized data.
  *
  * @version 1.0
  * @author <a href="http://jheer.org">Jeffrey Heer</a> vizster(AT)jheer.org
@@ -47,8 +47,8 @@ public class SearchPanel extends JPanel
 
     private JTextField queryF   = new JTextField(15);
     private JLabel     resultL = new JLabel();
-    private JLabel     searchL = new JLabel();
-    private JButton    searchB = new JButton("search");
+    private JLabel     matchL  = new JLabel();
+    private JLabel     searchL = new JLabel("search >> ");
     private IconButton upArrow = new IconButton(new ArrowIcon(ArrowIcon.UP),
             new ArrowIcon(ArrowIcon.UP_DEPRESSED));
     private IconButton downArrow = new IconButton(new ArrowIcon(ArrowIcon.DOWN),
@@ -90,19 +90,19 @@ public class SearchPanel extends JPanel
         downArrow.addActionListener(this);
         downArrow.setEnabled(false);
         
-        searchL.addMouseListener(new MouseAdapter() {
+        matchL.addMouseListener(new MouseAdapter() {
             public void mouseEntered(MouseEvent e) {
-                if ( searchL.getText().length() > 0 ) {
-                    searchL.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                if ( matchL.getText().length() > 0 ) {
+                    matchL.setCursor(new Cursor(Cursor.HAND_CURSOR));
                 }
             } //
             public void mouseExited(MouseEvent e) {
-                if ( searchL.getText().length() > 0 ) {
-                    searchL.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+                if ( matchL.getText().length() > 0 ) {
+                    matchL.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
                 }
             } //
             public void mouseClicked(MouseEvent e) {
-                if ( searchL.getText().length() > 0 ) {
+                if ( matchL.getText().length() > 0 ) {
                     focus.set(m_results[m_curResult]);
                 }
             } //
@@ -119,12 +119,12 @@ public class SearchPanel extends JPanel
         b.add(resultL);
         b.add(Box.createHorizontalStrut(5));
         b.add(Box.createHorizontalGlue());
-        b.add(searchL);
+        b.add(matchL);
         b.add(Box.createHorizontalStrut(5));
         b.add(downArrow);
         b.add(upArrow);
         b.add(Box.createHorizontalStrut(5));
-        b.add(new JLabel("search >> "));
+        b.add(searchL);
         b.add(queryF);
         
         this.add(b);
@@ -135,7 +135,7 @@ public class SearchPanel extends JPanel
         if ( query.length() == 0 ) {
             searcher.clear();
             resultL.setText("");
-            searchL.setText("");
+            matchL.setText("");
             downArrow.setEnabled(false);
             upArrow.setEnabled(false);
             m_results = null;
@@ -150,18 +150,41 @@ public class SearchPanel extends JPanel
             }
             if ( r > 0 ) {
                 String label = "name";
-                searchL.setText("1/"+r+": " +
+                matchL.setText("1/"+r+": " +
                         m_results[0].getAttribute(label));
                 downArrow.setEnabled(true);
                 upArrow.setEnabled(true);
             } else {
-                searchL.setText("");
+                matchL.setText("");
                 downArrow.setEnabled(false);
                 upArrow.setEnabled(false);
             }
             m_curResult = 0;
         }
         validate();
+    } //
+    
+    public void setBackground(Color bg) {
+        super.setBackground(bg);
+        if ( queryF  != null ) queryF.setBackground(bg);
+        if ( resultL != null ) resultL.setBackground(bg);
+        if ( matchL  != null ) matchL.setBackground(bg);
+        if ( searchL != null ) searchL.setBackground(bg);
+        if ( upArrow != null ) upArrow.setBackground(bg);
+        if ( downArrow != null ) downArrow.setBackground(bg);
+    } //
+    
+    public void setForeground(Color fg) {
+        super.setForeground(fg);
+        if ( queryF  != null ) {
+            queryF.setForeground(fg);
+            queryF.setCaretColor(fg);
+        }
+        if ( resultL != null ) resultL.setForeground(fg);
+        if ( matchL  != null ) matchL.setForeground(fg);
+        if ( searchL != null ) searchL.setForeground(fg);
+        if ( upArrow != null ) upArrow.setForeground(fg);
+        if ( downArrow != null ) downArrow.setForeground(fg);
     } //
 
     /**
@@ -189,7 +212,7 @@ public class SearchPanel extends JPanel
      * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
      */
     public void actionPerformed(ActionEvent e) {
-        if ( searchL.getText().length() == 0 ) return;
+        if ( matchL.getText().length() == 0 ) return;
         if ( e.getSource() == downArrow ) {
             m_curResult = (m_curResult + 1) % m_results.length;
         } else if ( e.getSource() == upArrow ) {
@@ -198,7 +221,7 @@ public class SearchPanel extends JPanel
                 m_curResult += m_results.length;
         }
         String label = "name";
-        searchL.setText((m_curResult+1)+"/"+m_results.length+": " +
+        matchL.setText((m_curResult+1)+"/"+m_results.length+": " +
                 m_results[m_curResult].getAttribute(label));
         validate();
         repaint();
@@ -216,7 +239,7 @@ public class SearchPanel extends JPanel
             setDisabledIcon(new ArrowIcon(ArrowIcon.DISABLED));
             setBorderPainted(false);
             setFocusPainted(false);
-            setBackground(Color.WHITE);
+            setBackground(getBackground());
             Insets in = getMargin();
             in.left = 0; in.right = 0;
             setMargin(in);
@@ -253,7 +276,7 @@ public class SearchPanel extends JPanel
                 p.addPoint(x+(w-1)/2,y+h-1);
                 p.addPoint(x,y);
             }
-            g.setColor((type%2!=0 ? Color.LIGHT_GRAY : Color.BLACK));
+            g.setColor((type%2!=0 ? Color.LIGHT_GRAY : getForeground()));
             g.fillPolygon(p);
             g.setColor(Color.BLACK);
             g.drawPolygon(p);

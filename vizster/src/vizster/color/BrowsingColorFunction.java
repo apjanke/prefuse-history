@@ -14,6 +14,7 @@ import edu.berkeley.guir.prefuse.util.ColorLib;
 import edu.berkeley.guir.prefuse.util.FocusSet;
 
 /**
+ * Color function used for Vizster's browsing mode
  *
  * @version 1.0
  * @author <a href="http://jheer.org">Jeffrey Heer</a> vizster(AT)jheer.org

@@ -13,7 +13,8 @@ import edu.berkeley.guir.prefuse.graph.external.ExternalTreeNode;
 import edu.berkeley.guir.prefuse.graph.external.GraphLoader;
 
 /**
- * 
+ * Loads friendster data from an external database using prefuse's
+ * preliminary external data management classes.
  *
  * @version 1.0
  * @author <a href="http://jheer.org">Jeffrey Heer</a> vizster(AT)jheer.org

@@ -14,7 +14,7 @@ import edu.berkeley.guir.prefuse.util.FontLib;
 
 
 /**
- * 
+ * Display subclass that draws a vizster logo.
  *
  * @version 1.0
  * @author <a href="http://jheer.org">Jeffrey Heer</a> vizster(AT)jheer.org

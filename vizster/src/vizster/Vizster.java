@@ -1,6 +1,7 @@
 package vizster;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
@@ -14,7 +15,8 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 
-import vizster.color.*;
+import vizster.color.BrowsingColorFunction;
+import vizster.color.ComparisonColorFunction;
 import vizster.render.VizsterRendererFactory;
 import vizster.util.ProfilePanel;
 import vizster.util.SearchPanel;
@@ -24,6 +26,9 @@ import edu.berkeley.guir.prefuse.FocusManager;
 import edu.berkeley.guir.prefuse.ItemRegistry;
 import edu.berkeley.guir.prefuse.NodeItem;
 import edu.berkeley.guir.prefuse.action.AbstractAction;
+import edu.berkeley.guir.prefuse.action.Action;
+import edu.berkeley.guir.prefuse.action.ActionMap;
+import edu.berkeley.guir.prefuse.action.ActionSwitch;
 import edu.berkeley.guir.prefuse.action.RepaintAction;
 import edu.berkeley.guir.prefuse.action.filter.FisheyeGraphFilter;
 import edu.berkeley.guir.prefuse.activity.ActionList;
@@ -66,12 +71,17 @@ public class Vizster extends JFrame {
     public static final String MOUSE_KEY  = "moused";
     public static final String SEARCH_KEY = "search";
     
+    // modes the interface can be in
+    public static final int BROWSE_MODE = 0;
+    public static final int COMPARE_MODE = 1;
+    
     // prefuse architecture components
     private ItemRegistry registry;
     private ActionList forces, filter;
     private VizsterDBLoader loader;
     private VizsterRendererFactory renderers;
     private ForceSimulator fsim;
+    private ActionMap actionMap;
     
     // ui components
     private Display display;
@@ -235,11 +245,21 @@ public class Vizster extends JFrame {
     private void initPrefuse() {
         // initialize renderers
         renderers = new VizsterRendererFactory(display);
+        renderers.setBrowseMode(true);
         registry.setRendererFactory(renderers);
         
         // set up actions
-        FisheyeGraphFilter   feyeFilter = new FisheyeGraphFilter(-1);
-        BrowsingColorFunction colorFunc = new BrowsingColorFunction();
+        FisheyeGraphFilter      feyeFilter = new FisheyeGraphFilter(-1);
+        BrowsingColorFunction   bcolorFunc = new BrowsingColorFunction();
+        ComparisonColorFunction ccolorFunc = new ComparisonColorFunction();
+        ActionSwitch colorSwitch = new ActionSwitch(
+                new Action[] {bcolorFunc, ccolorFunc}, 0);
+        
+        actionMap = new ActionMap();
+        actionMap.put("filter", feyeFilter);
+        actionMap.put("browseColors", bcolorFunc);
+        actionMap.put("compareColors", ccolorFunc);
+        actionMap.put("colorSwitch", colorSwitch);
         
         // initialize the force simulator
         fsim = new ForceSimulator();
@@ -251,7 +271,7 @@ public class Vizster extends JFrame {
         // initialize the filter action list
         filter = new ActionList(registry);
         filter.add(feyeFilter);
-        filter.add(colorFunc);
+        filter.add(colorSwitch);
         
         // initilaize the forces action list
         forces = new ActionList(registry,-1,20);
@@ -270,7 +290,7 @@ public class Vizster extends JFrame {
         forces.add(new ForceDirectedLayout(fsim, false, false) {
             private float normal = 2E-5f;
             private float slack1 = 2E-6f;
-            private float slack2 = 5E-7f;
+            private float slack2 = 2E-7f;
             protected float getSpringLength(NodeItem n1, NodeItem n2) {
                 int minE = Math.min(n1.getEdgeCount(),n2.getEdgeCount());
                 double doi = Math.max(n1.getDOI(), n2.getDOI());
@@ -286,7 +306,7 @@ public class Vizster extends JFrame {
                     return slack2;
             } //
         });
-        forces.add(colorFunc);
+        forces.add(colorSwitch);
         forces.add(new RepaintAction());
         
         // initialize focus listeners
@@ -331,6 +351,29 @@ public class Vizster extends JFrame {
     
     public ForceSimulator getForceSimulator() {
         return fsim;
+    } //
+    
+    public void setMode(int mode) {
+        if ( mode != BROWSE_MODE && mode != COMPARE_MODE )
+            return;
+        boolean b = (mode == BROWSE_MODE);
+        Color bg = b ? Color.WHITE : Color.BLACK;
+        Color fg = b ? Color.BLACK : Color.WHITE;
+        display.setBackground(bg);
+        display.setForeground(fg);
+        searcher.setBackground(bg);
+        searcher.setForeground(fg);
+        ActionSwitch as = (ActionSwitch)actionMap.get("colorSwitch");
+        as.setSwitchValue(b?0:1);
+        renderers.setBrowseMode(b);
+    } //
+    
+    public ComparisonColorFunction getComparisonColorFunction() {
+        return (ComparisonColorFunction)actionMap.get("compareColors");
+    } //
+    
+    public BrowsingColorFunction getBrowsingColorFunction() {
+        return (BrowsingColorFunction)actionMap.get("browseColors");
     } //
     
 } // end of class Vizster

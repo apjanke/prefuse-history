@@ -14,7 +14,7 @@ import edu.berkeley.guir.prefuse.ItemRegistry;
 import edu.berkeley.guir.prefuse.graph.Node;
 
 /**
- * 
+ * Allows users to jump to a given user id.
  *
  * @version 1.0
  * @author <a href="http://jheer.org">Jeffrey Heer</a> vizster(AT)jheer.org

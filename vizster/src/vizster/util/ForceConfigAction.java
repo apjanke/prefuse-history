@@ -11,7 +11,8 @@ import edu.berkeley.guir.prefusex.force.ForcePanel;
 import vizster.Vizster;
 
 /**
- * 
+ * Brings up a dialog allowing users to configure the force simulation
+ *  that provides Vizster's layout.
  *
  * @version 1.0
  * @author <a href="http://jheer.org">Jeffrey Heer</a> vizster(AT)jheer.org

@@ -4,7 +4,7 @@ import edu.berkeley.guir.prefuse.VisualItem;
 import edu.berkeley.guir.prefuse.render.DefaultEdgeRenderer;
 
 /**
- * Vizster edge renderer
+ * Vizster edge renderer, toggles edge width based on highlighted status
  *
  * @version 1.0
  * @author <a href="http://jheer.org">Jeffrey Heer</a> vizster(AT)jheer.org

@@ -20,7 +20,9 @@ import edu.berkeley.guir.prefuse.graph.event.GraphLoaderListener;
 import edu.berkeley.guir.prefuse.graph.event.GraphLoaderMulticaster;
 
 /**
- * 
+ * Custom database loader that allows for more fine-grain control over
+ * which data is loaded from the database. This is much more memory
+ * efficient that using the alternative VizsterDatabaseLoader class.
  *
  * @version 1.0
  * @author <a href="http://jheer.org">Jeffrey Heer</a> vizster(AT)jheer.org
@@ -40,6 +42,9 @@ public class VizsterDBLoader {
         = "select profiles.* from profiles, graph where " +
             "(graph.uid1 = ? AND profiles.uid = graph.uid2)";
     
+    /**
+     * Query for retrieving all edges incident on all friends of a person
+     */
     public static final String eQuery
         = "select g1.* from graph as g1 " +
             "left join graph as g2 on g1.uid1 = g2.uid2 where g2.uid1 = ?";
@@ -54,7 +59,7 @@ public class VizsterDBLoader {
      * A set of all the available friendster profile attributes
      */
     public static final String[] ALL_COLUMNS =
-        {"uid", "name", "location", "age", "gender", "status", 
+        {"uid", "name", "nfriends", "age", "gender", "status", 
          "interested_in", "preference", "location", "hometown",
          "occupation", "interests", "music", "books", "tvshows",
          "movies", "membersince", "lastlogin", "lastmod", "about",

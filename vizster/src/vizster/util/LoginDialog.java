@@ -24,8 +24,7 @@ import javax.swing.SwingConstants;
 import vizster.Vizster;
 
 /**
- * 
- * Apr 13, 2004 - jheer - Created class
+ * Login dialog for Vizster.
  *
  * @version 1.0
  * @author <a href="http://jheer.org">Jeffrey Heer</a> vizster(AT)jheer.org

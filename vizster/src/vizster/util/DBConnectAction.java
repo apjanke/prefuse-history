@@ -8,8 +8,7 @@ import vizster.Vizster;
 import vizster.VizsterDBLoader;
 
 /**
- * 
- * Apr 15, 2004 - jheer - Created class
+ * Attempts a connection to a database
  *
  * @version 1.0
  * @author <a href="http://jheer.org">Jeffrey Heer</a> vizster(AT)jheer.org
