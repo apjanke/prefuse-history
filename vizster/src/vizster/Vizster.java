@@ -104,6 +104,13 @@ public class Vizster extends JFrame {
     
     /**
      * Construct a new Vizster application instance.
+     */
+    public Vizster() {
+        this(DEFAULT_START_UID);
+    } //
+    
+    /**
+     * Construct a new Vizster application instance.
      * @param startUID the friendster user id to show first
      */
     public Vizster(String startUID) {
