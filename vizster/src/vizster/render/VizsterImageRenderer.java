@@ -23,8 +23,10 @@ public class VizsterImageRenderer extends TextImageItemRenderer {
     } //
     
     public int getRenderType(VisualItem item) {
-        if ( item.isFocus() || item.isHighlighted() )
+        if ( item.isFocus() )
             return RENDER_TYPE_DRAW_AND_FILL;
+        else if ( item.isHighlighted() )
+            return RENDER_TYPE_FILL;
         else
             return RENDER_TYPE_NONE;
     } //

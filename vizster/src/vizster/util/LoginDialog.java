@@ -72,8 +72,8 @@ public class LoginDialog extends JDialog {
         JLabel dbhostL = new JLabel("DB URL:", SwingConstants.RIGHT);
         JLabel dbnameL = new JLabel("DB Name:", SwingConstants.RIGHT);
         
-        final JTextField inputF = new JTextField("");
-        final JTextField passwF = new JPasswordField("");
+        final JTextField inputF = new JTextField("jheer");
+        final JTextField passwF = new JPasswordField("msql-121");
         final JTextField dbhostF = new JTextField("localhost");
         final JTextField dbnameF = new JTextField("friendster");
         

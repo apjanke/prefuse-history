@@ -14,6 +14,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 
+import vizster.color.*;
 import vizster.render.VizsterRendererFactory;
 import vizster.util.ProfilePanel;
 import vizster.util.SearchPanel;
@@ -70,6 +71,7 @@ public class Vizster extends JFrame {
     private ActionList forces, filter;
     private VizsterDatabaseLoader loader;
     private VizsterRendererFactory renderers;
+    private ForceSimulator fsim;
     
     // ui components
     private Display display;
@@ -127,7 +129,7 @@ public class Vizster extends JFrame {
         // initialize user interface components
         // set up the primary display
         display = new VizsterDisplay(registry);
-        display.setSize(700,700);
+        display.setSize(700,650);
         // create the panel which shows friendster profile data
         profile = new ProfilePanel(this);
         // create the search panel
@@ -195,19 +197,13 @@ public class Vizster extends JFrame {
         scroller.setVerticalScrollBarPolicy(
                 JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         Dimension pd = profile.getPreferredSize();
-        scroller.setPreferredSize(new Dimension(285,pd.height));
+        scroller.setPreferredSize(new Dimension(300,pd.height));
         
         searcher.setBorder(BorderFactory.createEmptyBorder(4,4,4,4));
         
         JPanel main = new JPanel(new BorderLayout());
         main.add(display, BorderLayout.CENTER);
         main.add(searcher, BorderLayout.SOUTH);
-        
-//        JSplitPane split1 = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
-//                false, display, searcher);
-//        split1.setDividerSize(10);
-//        split1.setResizeWeight(1.0);
-//        split1.setOneTouchExpandable(true);
         
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
                 false, main, scroller);
@@ -244,18 +240,31 @@ public class Vizster extends JFrame {
         
         // set up actions
         FisheyeGraphFilter   feyeFilter = new FisheyeGraphFilter(-1);
-        VizsterColorFunction colorFunc = new VizsterColorFunction();
+        BrowsingColorFunction colorFunc = new BrowsingColorFunction();
+        
+        // initialize the force simulator
+        fsim = new ForceSimulator();
+        fsim.addForce(new NBodyForce(-1.5f, -1f, 0.9f));
+        final SpringForce springF = new SpringForce(2E-5f, 150f);
+        fsim.addForce(springF);
+        fsim.addForce(new DragForce(-0.005f));
         
         // initialize the filter action list
         filter = new ActionList(registry);
         filter.add(feyeFilter);
         filter.add(colorFunc);
-        
-        // initialize the force simulator
-        ForceSimulator fsim = new ForceSimulator();
-        fsim.addForce(new NBodyForce(-1.5f, -1f, 0.9f));
-        fsim.addForce(new SpringForce(2E-5f, 150f));
-        fsim.addForce(new DragForce(-0.005f));
+        filter.add(new AbstractAction() {
+            private float normal = 2E-5f;
+            private float slack  = 2E-6f;
+            public void run(ItemRegistry registry, double frac) {
+                int sz = registry.size(ItemRegistry.DEFAULT_NODE_CLASS);
+                if ( sz > 100 ) {
+                    springF.setParameter(SpringForce.SPRING_COEFF, slack);
+                } else {
+                    springF.setParameter(SpringForce.SPRING_COEFF, normal);
+                }
+            } //
+        });
         
         // initilaize the forces action list
         forces = new ActionList(registry,-1,20);
@@ -319,6 +328,10 @@ public class Vizster extends JFrame {
     
     public VizsterDatabaseLoader getLoader() {
         return loader;
+    } //
+    
+    public ForceSimulator getForceSimulator() {
+        return fsim;
     } //
     
 } // end of class Vizster

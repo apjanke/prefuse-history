@@ -1,14 +1,16 @@
-package vizster;
+package vizster.color;
 
 import java.awt.Color;
 import java.awt.Paint;
+
+import vizster.Vizster;
 
 import edu.berkeley.guir.prefuse.EdgeItem;
 import edu.berkeley.guir.prefuse.FocusManager;
 import edu.berkeley.guir.prefuse.ItemRegistry;
 import edu.berkeley.guir.prefuse.VisualItem;
 import edu.berkeley.guir.prefuse.action.assignment.ColorFunction;
-import edu.berkeley.guir.prefuse.util.ColorMap;
+import edu.berkeley.guir.prefuse.util.ColorLib;
 import edu.berkeley.guir.prefuse.util.FocusSet;
 
 /**
@@ -16,16 +18,14 @@ import edu.berkeley.guir.prefuse.util.FocusSet;
  * @version 1.0
  * @author <a href="http://jheer.org">Jeffrey Heer</a> vizster(AT)jheer.org
  */
-public class VizsterColorFunction extends ColorFunction {
+public class BrowsingColorFunction extends ColorFunction {
 
-    private Color transparent    = new Color(255,255,255,0);
-    private Color focusColor     = new Color(200,0,0);
-    private Color edgeHighlight  = new Color(255,200,125);
-    private Color nodeHighlight  = Color.ORANGE;
-    private Color defaultColor   = new Color(220,220,255);
-    private Color fixedColor     = new Color(245,200,245);
-    
-    ColorMap cmap = new ColorMap(ColorMap.getGrayscaleMap(),-25,150);
+    private Color mouseColor     = ColorLib.getColor(255,125,125);
+    private Color focusColor     = ColorLib.getColor(200,0,0);
+    private Color edgeHighlight  = ColorLib.getColor(255,200,125);
+    private Color nodeHighlight  = ColorLib.getColor(255,200,125);
+    private Color defaultColor   = ColorLib.getColor(220,220,255);
+    private Color fixedColor     = ColorLib.getColor(245,200,245);
     
     public Paint getColor(VisualItem item) {
         ItemRegistry registry = item.getItemRegistry();
@@ -38,7 +38,7 @@ public class VizsterColorFunction extends ColorFunction {
             if ( item instanceof EdgeItem )
                 return edgeHighlight;
             else
-                return nodeHighlight;
+                return Color.BLACK;
         } else if ( item instanceof EdgeItem ) {
             return Color.LIGHT_GRAY;
         } else {
@@ -47,13 +47,17 @@ public class VizsterColorFunction extends ColorFunction {
     } //
     
     public Paint getFillColor(VisualItem item) {
-//        if ( item instanceof NodeItem ) {
-//            NodeItem nitem = (NodeItem)item;
-//            Node n = (Node)nitem.getEntity();
-//            return cmap.getColor(n.getEdgeCount());
-//        } else
-//            return Color.BLACK;
-        return Color.WHITE;
-    } //            
+        ItemRegistry registry = item.getItemRegistry();
+        FocusManager fmanager = registry.getFocusManager();
+        FocusSet mouseSet = fmanager.getFocusSet(Vizster.MOUSE_KEY);
+        
+        if ( mouseSet.contains(item.getEntity()) ) {
+            return mouseColor;
+        } else if ( item.isHighlighted() ) {
+            return nodeHighlight;
+        } else {
+            return Color.WHITE;
+        }
+    } //
     
-} // end of class VizsterColorFunction
+} // end of class BrowsingColorFunction
