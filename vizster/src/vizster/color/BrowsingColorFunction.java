@@ -10,8 +10,8 @@ import edu.berkeley.guir.prefuse.FocusManager;
 import edu.berkeley.guir.prefuse.ItemRegistry;
 import edu.berkeley.guir.prefuse.VisualItem;
 import edu.berkeley.guir.prefuse.action.assignment.ColorFunction;
+import edu.berkeley.guir.prefuse.focus.FocusSet;
 import edu.berkeley.guir.prefuse.util.ColorLib;
-import edu.berkeley.guir.prefuse.util.FocusSet;
 
 /**
  * Color function used for Vizster's browsing mode
