@@ -37,8 +37,7 @@ public class PrefuseAppLauncher extends JFrame {
         AppDescription[] desc = {
                 new AppDescription("Radial Graph Explorer", "radial.png", "prefuse.radialexplorer.RadialGraphExplorer", "/friendster.xml"),
                 new AppDescription("Graph Editor", "editor.png", "prefuse.grapheditor.GraphEditor", null),
-                new AppDescription("Data Mountain", "datamountain.png", "prefuse.datamountain.DataMountain", "/data.xml"),
-                new AppDescription("Hyperbolic Tree", "hyperbolic.png", "prefuse.hyperbolictree.HyperbolicTree", "/chitest.hdir")
+                new AppDescription("Data Mountain", "datamountain.png", "prefuse.datamountain.DataMountain", "/data.xml")
         };
         return desc;
     }
