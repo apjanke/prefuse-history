@@ -350,7 +350,7 @@ public class GraphEditor extends JFrame {
 		Iterator nodeIter = g.getNodes();
 		while ( nodeIter.hasNext() ) {
 			Node n = (Node)nodeIter.next();
-			NodeItem item = registry.getNodeItem(n,true);
+			NodeItem item = registry.getNodeItem(n,true,false);
 			item.setColor(Color.BLACK);
 			item.setFillColor(Color.WHITE);
 			try {
@@ -604,8 +604,7 @@ public class GraphEditor extends JFrame {
 			    registry.setGraph(g);
 			    saveFile = null;
                 setEdited(false);
-			    activityMap.runNow("filter");
-                activityMap.runNow("update");
+                runFilterUpdate = true;
 			} else if ( OPEN.equals(cmd) ) {
 				JFileChooser chooser = new JFileChooser();
 				if ( chooser.showOpenDialog(display) == JFileChooser.APPROVE_OPTION ) {
@@ -615,10 +614,9 @@ public class GraphEditor extends JFrame {
 						g = gr.loadGraph(f);
 						registry.setGraph(g);
 						setLocations(g);
-                        activityMap.runNow("filter");
-                        activityMap.runNow("update");
 						saveFile = f;
 						setEdited(false);
+						runFilterUpdate = true;
 					 } catch ( Exception ex ) {
 						JOptionPane.showMessageDialog(
 							display,
@@ -727,6 +725,7 @@ public class GraphEditor extends JFrame {
 	    public DirectedDialog() {
 	        super(GraphEditor.this, "New Graph", true);
 	        Container c = getContentPane();
+	        setLookAndFeel();
 	        
 	        dir = new JRadioButton("Directed");
 	        und = new JRadioButton("Undirected");
@@ -758,11 +757,13 @@ public class GraphEditor extends JFrame {
 	        b.add(okb);
 	        b.add(Box.createVerticalStrut(5));
 	        
-	        c.setLayout(new BoxLayout(c, BoxLayout.X_AXIS));
-	        c.add(Box.createHorizontalStrut(10));
-	        c.add(b);
-	        c.add(Box.createHorizontalStrut(10));
+	        Box d = new Box(BoxLayout.X_AXIS);
+	        d.add(Box.createHorizontalStrut(10));
+	        d.add(b);
+	        d.add(Box.createHorizontalStrut(10));
 	        
+	        c.add(d);
+	        c.setBackground(dir.getBackground());
 	        this.pack();
 	    } //
 
