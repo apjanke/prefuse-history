@@ -1,4 +1,4 @@
-package edu.berkeley.guir.prefusex.lucene;
+package prefusex.lucene;
 
 import java.awt.Color;
 import java.awt.Component;

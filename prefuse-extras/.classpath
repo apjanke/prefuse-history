@@ -5,5 +5,6 @@
 	<classpathentry kind="src" path="/prefuse"/>
 	<classpathentry kind="lib" path="lib/colt.jar"/>
 	<classpathentry kind="lib" path="lib/lucene-1.4.3.jar"/>
+	<classpathentry kind="lib" path="lib/mysql-connector-java-3.0.10-stable-bin.jar"/>
 	<classpathentry kind="output" path="classes"/>
 </classpath>

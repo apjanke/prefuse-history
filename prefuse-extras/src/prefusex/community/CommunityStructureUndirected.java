@@ -1,4 +1,4 @@
-package edu.berkeley.guir.prefusex.community;
+package prefusex.community;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -26,7 +26,7 @@ import cern.colt.matrix.impl.DenseDoubleMatrix1D;
  * @version 1.0
  * @author <a href="http://jheer.org">Jeffrey Heer</a> prefuse(AT)jheer.org
  */
-public class CommunityStructureDirected implements CommunityStructure {
+public class CommunityStructureUndirected implements CommunityStructure {
 
     private double dQ, maxDQ = 0.0;
     private int x, y;
@@ -43,7 +43,7 @@ public class CommunityStructureDirected implements CommunityStructure {
     public static void main(String[] args) {
         try {
             DoubleMatrix2D g = CommunityLib.loadMatrix(args[0]);
-            CommunityStructureDirected comm = new CommunityStructureDirected();
+            CommunityStructureUndirected comm = new CommunityStructureUndirected();
             comm.verbose = true;
             comm.run(g);
             comm.saveResults();
@@ -64,19 +64,19 @@ public class CommunityStructureDirected implements CommunityStructure {
         if (verbose) System.out.println("Weighting matrix");
         
         // initialize weighted matrix
-        e = g.copy();
+        e = g;//g.copy();
         if (verbose) System.out.println("\tComputing normalization factor");
         e.forEachNonZero(new ClearDiagonal());
         ZSum zSum = new ZSum();
         e.forEachNonZero(zSum);
         if (verbose) System.out.println("\tScaling matrix");
-        e.forEachNonZero(new Mult(1/zSum.getSum()));
+        e.forEachNonZero(new Mult(2/zSum.getSum()));
         
         if (verbose) System.out.println("Computing column sums");
         
         // initialize column sums
         a = new DenseDoubleMatrix1D(N);
-        e.forEachNonZero(new RowSum());
+        e.forEachNonZero(new ColSum());
         
         if (verbose) System.out.print("Collecting edges... ");
         
@@ -97,36 +97,29 @@ public class CommunityStructureDirected implements CommunityStructure {
                 x = edge[0]; y = edge[1];
                 if ( x == y ) continue;
                 // compute delta Q
-                dQ = e.getQuick(x,y) + e.getQuick(y,x) 
-                        - 2*a.getQuick(x)*a.getQuick(y);
+                dQ = 2 * (e.getQuick(x,y) - a.getQuick(x)*a.getQuick(y));
                 // check against max so far
                 if ( dQ > maxDQ ) {
                     maxDQ = dQ;
                     maxEdge[0] = x; maxEdge[1] = y;
                 }
             }
-            
+        
             // update the graph
             x = maxEdge[0]; y = maxEdge[1];
-            if ( y < x ) { // ensure merge ordering to less index
-                int tmp = y; y = x; x = tmp;
-            }
             double na = 0.0;
             for ( int k=0; k < N; k++ ) {
-                double v = e.getQuick(x,k) + e.getQuick(y,k);
+                double v;
+                v = e.getQuick(x,k) + e.getQuick(y,k);
                 if ( v != 0 ) { 
-                    na += v;
                     e.setQuick(x,k,v);
-                    e.setQuick(y,k,0);
-                }
-            }
-            for ( int k=0; k < N; k++ ) {
-                double v = e.getQuick(k,x) + e.getQuick(k,y);
-                if ( v != 0 ) {
                     e.setQuick(k,x,v);
-                    e.setQuick(k,y,0);
+                    na += v;
                 }
+                e.setQuick(y,k,0);
+                e.setQuick(k,y,0);
             }
+            //a.setQuick(x,e.viewRow(x).zSum());
             a.setQuick(x,na);
             a.setQuick(y,0.0);
             
@@ -154,9 +147,9 @@ public class CommunityStructureDirected implements CommunityStructure {
             }
             
             qval[i] = Q;
-            plist.add(new int[] {x,y}); // shift back from 0-base to 1-base
+            plist.add(new int[] {x+1,y+1}); // shift back from 0-base to 1-base
             
-            if (verbose) System.out.println(Q+"\t"+"iter "+(i+1)+"("+(N-i-1)+")\t"+"nedges = "+E.size());
+            if (verbose) System.out.println(Q+"\t"+"iter "+i+"\t"+"nedges = "+E.size());
         }
         
         if (verbose) System.out.println();
@@ -188,24 +181,24 @@ public class CommunityStructureDirected implements CommunityStructure {
         public double apply(int arg0, int arg1, double arg2) {
             return ( arg0 == arg1 ? 0.0 : arg2 );
         }
-    } //
+    }
     
     public class EdgeCollector implements IntIntDoubleFunction {
         public double apply(int arg0, int arg1, double arg2) {
-            if ( arg0 != arg1 ) {
+            if ( arg0 < arg1 ) {
                 int[] edge = new int[] {arg0,arg1};
                 E.add(edge);
             }
             return arg2;
         }
-    } //
+    }
     
-    public class RowSum implements IntIntDoubleFunction {
+    public class ColSum implements IntIntDoubleFunction {
         public double apply(int arg0, int arg1, double arg2) {
-            a.setQuick(arg0, a.getQuick(arg0)+arg2);
+            a.setQuick(arg1, a.getQuick(arg1)+arg2);
             return arg2;
         }
-    } //
+    }
     
     public class Mult implements IntIntDoubleFunction {
         private double scalar;
@@ -215,7 +208,7 @@ public class CommunityStructureDirected implements CommunityStructure {
         public double apply(int arg0, int arg1, double arg2) {
             return arg2*scalar;
         }
-    } //
+    }
     
     public class ZSum implements IntIntDoubleFunction {
         double sum = 0;
@@ -231,4 +224,4 @@ public class CommunityStructureDirected implements CommunityStructure {
         }
     } //
     
-} // end of class CommunityStructureDirected
+} // end of class CommunityStructure

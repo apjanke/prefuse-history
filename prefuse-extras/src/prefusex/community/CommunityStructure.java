@@ -1,4 +1,4 @@
-package edu.berkeley.guir.prefusex.community;
+package prefusex.community;
 
 import java.util.List;
 

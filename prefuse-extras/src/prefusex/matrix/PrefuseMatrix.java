@@ -1,9 +1,12 @@
-package edu.berkeley.guir.prefusex.matrix;
+package prefusex.matrix;
 
 import java.util.HashMap;
 import java.util.Iterator;
 
-import cern.colt.matrix.impl.SparseDoubleMatrix2D;
+import cern.colt.matrix.impl.LargeSparseDoubleMatrix2D;
+
+
+import edu.berkeley.guir.prefuse.ItemRegistry;
 import edu.berkeley.guir.prefuse.NodeItem;
 import edu.berkeley.guir.prefuse.graph.Edge;
 import edu.berkeley.guir.prefuse.graph.Graph;
@@ -19,14 +22,21 @@ import edu.berkeley.guir.prefuse.graph.Node;
  * @version 1.0
  * @author <a href="http://jheer.org">Jeffrey Heer</a> prefuse(AT)jheer.org
  */
-public class PrefuseMatrix extends SparseDoubleMatrix2D {
+public class PrefuseMatrix extends LargeSparseDoubleMatrix2D {
 
     private HashMap nodeIndexMap = new HashMap();
     private HashMap indexNodeMap = new HashMap();
     
     public PrefuseMatrix(Graph g) {
         super(g.getNodeCount(), g.getNodeCount());
-        init(g);
+        ItemRegistry registry = getRegistry(g);
+        if ( registry == null ) {
+            init(g);
+        } else {
+            synchronized (registry) {
+                init(g);
+            }
+        }
     } //
     
     protected void init(Graph g) {
@@ -64,6 +74,20 @@ public class PrefuseMatrix extends SparseDoubleMatrix2D {
                 this.setQuick(n2,n1,w);
             }
         }
+    } //
+    
+    protected ItemRegistry getRegistry(Graph g) {
+        Node n = null;
+        ItemRegistry registry = null;
+        while ( g.getNodeCount() > 0 && n == null ) {
+            try {
+                n = (Node)g.getNodes().next();
+                if ( n instanceof NodeItem ) {
+                    registry = ((NodeItem)n).getItemRegistry();
+                }
+            } catch ( Exception e ) {}
+        }
+        return registry; 
     } //
     
     public Node getNode(int idx) {
