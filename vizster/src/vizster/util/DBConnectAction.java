@@ -5,7 +5,7 @@ import java.awt.event.ActionEvent;
 import javax.swing.AbstractAction;
 
 import vizster.Vizster;
-import vizster.VizsterDatabaseLoader;
+import vizster.VizsterDBLoader;
 
 /**
  * 
@@ -30,7 +30,7 @@ public class DBConnectAction extends AbstractAction {
             String[] auth = loginD.getLoginInfo();
             if ( auth == null ) return;
             Vizster vizster = (Vizster)loginD.getOwner();
-            VizsterDatabaseLoader loader = vizster.getLoader();
+            VizsterDBLoader loader = vizster.getLoader();
             loader.connect(DRIVER,
                     // first use the host and database name
                     PROTOCOL + "//" + auth[2] + "/" + auth[3],

@@ -69,7 +69,7 @@ public class Vizster extends JFrame {
     // prefuse architecture components
     private ItemRegistry registry;
     private ActionList forces, filter;
-    private VizsterDatabaseLoader loader;
+    private VizsterDBLoader loader;
     private VizsterRendererFactory renderers;
     private ForceSimulator fsim;
     
@@ -114,8 +114,7 @@ public class Vizster extends JFrame {
         fmanager.putFocusSet(SEARCH_KEY, searchSet);
         
         // create a new loader to talk to the database
-        loader = new VizsterDatabaseLoader(registry,
-                VizsterDatabaseLoader.ALL_COLUMNS);
+        loader = new VizsterDBLoader(registry, VizsterDBLoader.ALL_COLUMNS);
         // register update listener with graph loader
         loader.addGraphLoaderListener(new GraphLoaderListener() {
             public void entityLoaded(GraphLoader loader, Entity e) {
@@ -139,7 +138,7 @@ public class Vizster extends JFrame {
         initPrefuse();
         
         // attempt to login to database
-        if ( !VizsterLib.authenticate(this, loader, loginRetries) ) {
+        if ( !VizsterLib.authenticate(this, loginRetries) ) {
             System.exit(0); // user canceled login so exit
         }
         
@@ -300,6 +299,7 @@ public class Vizster extends JFrame {
                 
                 centerDisplay(); // center display on the new focus
                 filter.runNow(); // refilter
+                loader.loadNeighbors((Node)e.getFirstAdded());
             } //
         });
         
@@ -325,7 +325,7 @@ public class Vizster extends JFrame {
         return registry;
     } //
     
-    public VizsterDatabaseLoader getLoader() {
+    public VizsterDBLoader getLoader() {
         return loader;
     } //
     

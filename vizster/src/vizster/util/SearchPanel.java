@@ -72,8 +72,14 @@ public class SearchPanel extends JPanel
                 if ( !(item instanceof NodeItem) ) return;
                 for ( int i=0; i < searchAttr.length; i++ )
                     searcher.index(item.getEntity(), searchAttr[i]);
+                searchUpdate();
             } //
-            public void registryItemRemoved(VisualItem item) {} //
+            public void registryItemRemoved(VisualItem item) {
+                if ( !(item instanceof NodeItem) ) return;
+                for ( int i=0; i < searchAttr.length; i++ )
+                    searcher.remove(item.getEntity(), searchAttr[i]);
+                searchUpdate();
+            } //
         });
         
         queryF.getDocument().addDocumentListener(this);

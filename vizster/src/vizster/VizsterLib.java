@@ -6,7 +6,6 @@ import javax.swing.JOptionPane;
 import javax.swing.UIManager;
 
 import vizster.util.LoginDialog;
-import edu.berkeley.guir.prefuse.graph.external.DatabaseLoader;
 
 /**
  * Library of useful routines supporting the Vizster application
@@ -69,46 +68,10 @@ public class VizsterLib {
         JOptionPane.showMessageDialog(c, msg);
     } //
     
-//    /**
-//     * Get login information.
-//     * @param frame
-//     * @return
-//     */
-//    public static final String[] authenticate(JFrame frame) {
-//        if ( loginDialog == null )
-//            loginDialog = new LoginDialog(frame);
-//        loginDialog.show();
-//        return loginDialog.getLoginInfo();
-//    } //
-    
-    public static final boolean authenticate(Vizster owner, 
-            DatabaseLoader loader, int retries) {
+    public static final boolean authenticate(Vizster owner, int retries) {
         LoginDialog ld = new LoginDialog(owner);
         ld.show();
         return ld.isLoggedIn();
-        
-//        for (int i=1; retries>=0 && i<=retries; i++) {
-//            try {
-//                if ( loginDialog == null )
-//                    loginDialog = new LoginDialog(frame);
-//                loginDialog.show();
-//                String[] auth = loginDialog.getLoginInfo();
-//                if ( auth == null )
-//                    return false;
-//                loader.connect("com.mysql.jdbc.Driver",
-//                        // first use the host and database name
-//                        "jdbc:mysql://" + auth[0] + "/" + auth[1],
-//                        auth[2],    // now use the login
-//                        auth[3]);   // and finally the password
-//                return true;
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//                VizsterLib.defaultError(frame,"Couldn't connect to database");
-//            }
-//            if ( i == retries )
-//                VizsterLib.errexit(null,frame,"Too many login attempts.");
-//        }
-//        return false;
     } //
     
     public static final void setLookAndFeel() {

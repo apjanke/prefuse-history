@@ -32,6 +32,9 @@ public class VizsterDatabaseLoader extends DatabaseLoader {
     public static final String nQuery 
         = "select profiles.* from profiles, graph where " +
             "(graph.uid1 = ? AND profiles.uid = graph.uid2)";
+    
+    public static final String eQuery
+        = "select * from graph where uid1 = ?";
 
     /**
      * The default set of profile entries to load

@@ -7,7 +7,7 @@ import javax.swing.AbstractAction;
 import javax.swing.JOptionPane;
 
 import vizster.Vizster;
-import vizster.VizsterDatabaseLoader;
+import vizster.VizsterDBLoader;
 import vizster.VizsterLib;
 import edu.berkeley.guir.prefuse.FocusManager;
 import edu.berkeley.guir.prefuse.ItemRegistry;
@@ -40,7 +40,7 @@ public class GotoAction extends AbstractAction {
         }
         
         // load the profile as needed
-        VizsterDatabaseLoader loader = vizster.getLoader();
+        VizsterDBLoader loader = vizster.getLoader();
         Node n = null;
         try {
             n = loader.getProfileNode(uid);
