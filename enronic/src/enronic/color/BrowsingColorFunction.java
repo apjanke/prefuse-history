@@ -3,6 +3,8 @@ package enronic.color;
 import java.awt.Color;
 import java.awt.Paint;
 
+import prefusex.community.CommunitySet;
+
 import edu.berkeley.guir.prefuse.EdgeItem;
 import edu.berkeley.guir.prefuse.FocusManager;
 import edu.berkeley.guir.prefuse.ItemRegistry;
@@ -12,7 +14,6 @@ import edu.berkeley.guir.prefuse.focus.FocusSet;
 import edu.berkeley.guir.prefuse.graph.Node;
 import edu.berkeley.guir.prefuse.util.ColorLib;
 import edu.berkeley.guir.prefuse.util.ColorMap;
-import edu.berkeley.guir.prefusex.community.CommunitySet;
 import enronic.Enronic;
 
 /**

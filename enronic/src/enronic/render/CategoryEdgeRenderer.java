@@ -77,30 +77,7 @@ public class CategoryEdgeRenderer implements Renderer {
         Paint itemColor = item.getColor();
         Paint fillColor = item.getFillColor();
         
-        // render the shape
-        Stroke s = g.getStroke();
-        Stroke is = getStroke(item);
-		
-//        double x1 = m_line.getX1(), y1 = m_line.getY1();
-//        double x2 = m_line.getX2(), y2 = m_line.getY2();
-//        double mx = x1+(x2-x1)/2.0, my = y1+(y2-y1)/2.0;
-//        
-//        Stroke s1 = new BasicStroke(1);
-//        Stroke s2 = new BasicStroke(3);
-//        
-//        g.setPaint(itemColor);
-//        m_line.setLine(x1,y1,mx,my);
-//        g.setStroke(s1);
-//		g.draw(m_line);
-//		m_line.setLine(mx,my,x2,y2);
-//		g.setStroke(s2);
-//		g.draw(m_line);
-        
-        g.setPaint(itemColor);
-        g.draw(m_line);
-		
-		g.setStroke((is!=null?is:s));
-        
+        // calculate the category counts
         int[] cats = getCategories(item.getEntity());
         double sum = 0;
         for ( int i=1; i < cats.length; i++ ) {
@@ -109,6 +86,16 @@ public class CategoryEdgeRenderer implements Renderer {
         cats[0] -= sum;
         if ( cats[0] < 0 ) cats[0] = 0;
         sum += cats[0];
+        item.setAttribute("weight", String.valueOf(sum));
+        
+        // render the shape
+        Stroke s = g.getStroke();
+        Stroke is = getStroke(item);
+        g.setStroke((is!=null?is:s));
+        g.setPaint(itemColor);
+        g.draw(m_line);
+        
+        // draw pie menu
         double angle = 0;
         for ( int i=0; i<cats.length; i++ ) {
             if ( cats[i] > 0 ) {
@@ -121,13 +108,10 @@ public class CategoryEdgeRenderer implements Renderer {
                 g.fill(m_slices[i]);
             }
         }
-        
-		//g.setPaint(fillColor);
-		//g.fill(m_circle);
+
+        g.setStroke(s);
 		g.setPaint(itemColor);
 		g.draw(m_circle);
-		
-        g.setStroke(s);
 	} //
 
 	private String[] attr = {"base", "cat01","cat02","cat03","cat04","cat05",
@@ -168,6 +152,16 @@ public class CategoryEdgeRenderer implements Renderer {
 	 * @return the desired line width, in pixels
 	 */
 	protected int getLineWidth(VisualItem item) {
+	    String wstr = item.getAttribute("weight");
+        if ( wstr != null && !wstr.equals("")) {
+            try {
+                double w = Double.parseDouble(wstr);
+                return Math.max(1,1+(int)Math.round(Math.log(w)));
+            } catch ( Exception e ) {
+                System.err.println("Weight value is not a valid number: "+wstr);
+                e.printStackTrace();
+            }
+        }
 		return m_width;
 	} //
     
@@ -175,7 +169,8 @@ public class CategoryEdgeRenderer implements Renderer {
      * @see edu.berkeley.guir.prefuse.render.ShapeRenderer#getStroke(edu.berkeley.guir.prefuse.VisualItem)
      */
     protected BasicStroke getStroke(VisualItem item) {
-        return (m_curWidth == 1 ? null : new BasicStroke(m_curWidth));
+        int w = getLineWidth(item);
+        return (w == 1 ? null : new BasicStroke(w));
     } //
 	
 	/**

@@ -35,31 +35,13 @@ import edu.berkeley.guir.prefuse.graph.io.XMLGraphWriter;
 public class EnronicDBLoader {
 
     /**
-     * The default set of profile entries to load
-     */
-    public static final String[] DEFAULT_COLUMNS =
-        {"uid", "name", "location", "age", "photourl"};
-    
-    /**
      * A set of all the available friendster profile attributes
      */
-//    public static final String[] ALL_COLUMNS =
-//        {"uid", "name", "nfriends", "age", "gender", "status", 
-//         "interested_in", "preference", "location", "hometown",
-//         "occupation", "interests", "music", "books", "tvshows",
-//         "movies", "membersince", "lastlogin", "lastmod", "about",
-//         "want_to_meet", "photourl"};
     public static final String[] ALL_COLUMNS =
     {"personid", "email", "name", "title"};
     
-    //protected String m_keyField = "uid";
     protected String m_keyField = "personid";
-    //protected int m_maxSize = 1000000; //5000;
-    //protected LinkedHashMap m_cache = new LinkedHashMap(m_maxSize,.75f,true) {
-    //    public boolean removeEldestEntry(Map.Entry eldest) {
-    //        return evict((Entity)eldest.getValue());
-    //    }
-    //};
+    
     protected HashMap m_cache = new HashMap();
     protected HashMap m_mcache = new HashMap();
     protected GraphLoaderListener m_listener;
@@ -84,11 +66,10 @@ public class EnronicDBLoader {
      * @param registry the ItemRegistry to load to
      */
     public EnronicDBLoader(ItemRegistry registry) {
-        this(registry, DEFAULT_COLUMNS);
+        this(registry, ALL_COLUMNS);
     } //
     
     public EnronicDBLoader(ItemRegistry registry, String columns[]) {
-        //this(new enronicDBParams("profiles","uid","graph","uid1","uid2"),registry,columns);
         this(new EnronicDBParams("people","personid","edges","senderid","recipientid"),registry,columns);
     }
     
@@ -433,14 +414,6 @@ public class EnronicDBLoader {
         } catch ( SQLException e ) { e.printStackTrace(); }
     } //
     
-//    public void setMaximumCacheSize(int size) {
-//        m_maxSize = size;
-//    } //
-//    
-//    public int getMaximumCacheSize() {
-//        return m_maxSize;
-//    } //
-    
     public void addGraphLoaderListener(GraphLoaderListener l) {
         m_listener = GraphLoaderMulticaster.add(m_listener, l);
     } //
@@ -452,16 +425,6 @@ public class EnronicDBLoader {
     public void touch(Entity e) {
         m_cache.get(e.getAttribute(m_keyField));
     } //
-    
-//    public boolean evict(Entity eldest) {
-//        boolean b = m_cache.size()>m_maxSize;
-//        if ( b && m_listener != null )
-//            m_listener.entityUnloaded(null, eldest);
-//        if ( b ) {
-//            m_graph.removeNode((Node)eldest); 
-//        }
-//        return b;
-//    } //
     
     public void connect(String driver, String url, String user, String password)
     throws SQLException, InstantiationException, IllegalAccessException, ClassNotFoundException

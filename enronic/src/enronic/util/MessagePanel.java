@@ -22,6 +22,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.ListCellRenderer;
+import javax.swing.SwingUtilities;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
@@ -46,6 +47,7 @@ public class MessagePanel extends JPanel {
     private CategoryPanel categories;
     private JTextArea     content;
     private JScrollPane   listscroll, textscroll;
+    private Runnable      viewPositionSetter;
     private int           curID;
     
     private Enronic enronic;
@@ -97,6 +99,12 @@ public class MessagePanel extends JPanel {
                 JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         textscroll.setPreferredSize(new Dimension(300,500));
         
+        viewPositionSetter = new Runnable() {
+            public void run() {
+                textscroll.getViewport().setViewPosition(new Point(0,0));
+            } //
+        };
+        
         messages.addListSelectionListener(new ListSelectionListener() {
             public void valueChanged(ListSelectionEvent arg0) {
                 Message m = (Message)messages.getSelectedValue();
@@ -122,9 +130,10 @@ public class MessagePanel extends JPanel {
         curID = Integer.parseInt(n1.getAttribute("personid"));
         messages.setListData(list.toArray(new Message[list.size()]));
         messages.setSelectedIndex(0);
-        content.setText(messages.getSelectedValue().toString());
+        content.setText(messages.getSelectedValue().toString());     
         this.validate();
-        textscroll.getViewport().setViewPosition(new Point(0,0));
+        
+        SwingUtilities.invokeLater(viewPositionSetter);
     } //
     
     public class CategoryPanel extends JPanel {

@@ -4,7 +4,8 @@ import javax.swing.JSlider;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-import edu.berkeley.guir.prefusex.community.CommunitySet;
+import prefusex.community.CommunitySet;
+
 import enronic.Enronic;
 
 

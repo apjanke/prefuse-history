@@ -4,8 +4,9 @@ import java.awt.event.ActionEvent;
 
 import javax.swing.AbstractAction;
 
+import prefusex.community.CommunitySet;
+
 import edu.berkeley.guir.prefuse.ItemRegistry;
-import edu.berkeley.guir.prefusex.community.CommunitySet;
 import enronic.Enronic;
 
 /**

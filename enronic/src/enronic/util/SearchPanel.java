@@ -25,6 +25,8 @@ import javax.swing.JTextField;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
+import prefusex.community.CommunitySet;
+
 import edu.berkeley.guir.prefuse.FocusManager;
 import edu.berkeley.guir.prefuse.ItemRegistry;
 import edu.berkeley.guir.prefuse.NodeItem;
@@ -35,7 +37,6 @@ import edu.berkeley.guir.prefuse.event.ItemRegistryListener;
 import edu.berkeley.guir.prefuse.focus.FocusSet;
 import edu.berkeley.guir.prefuse.focus.PrefixSearchFocusSet;
 import edu.berkeley.guir.prefuse.graph.Entity;
-import edu.berkeley.guir.prefusex.community.CommunitySet;
 import enronic.Enronic;
 import enronic.data.EnronicDBLoader;
 
