@@ -4,7 +4,6 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/mysql-connector-java-3.0.10-stable-bin.jar"/>
 	<classpathentry kind="src" path="/prefuse"/>
-	<classpathentry kind="lib" path="lib/colt.jar"/>
 	<classpathentry kind="src" path="/prefuse-extras"/>
 	<classpathentry kind="output" path="classes"/>
 </classpath>
