@@ -5,7 +5,10 @@ import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.net.URL;
+import java.util.Properties;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -13,11 +16,12 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
+
+import vizster.Vizster;
 
 /**
  * 
@@ -31,10 +35,15 @@ public class LoginDialog extends JDialog {
     private static final int LABELW = 75;
     private static final int FIELDW = 200;
     
-    JTextField curFields[];
+    private Vizster vizster;
+    private JLabel failL;
     
-    public LoginDialog(JFrame owner) {
+    private JTextField curFields[];
+    private boolean login = false;
+    
+    public LoginDialog(Vizster owner) {
         super(owner, "Vizster Login", true);
+        vizster = owner;
         curFields = null;
         initUI();
         
@@ -59,12 +68,25 @@ public class LoginDialog extends JDialog {
         logoL.setIconTextGap(0);
         logoL.setPreferredSize(d);
         logoL.setMaximumSize(d);
-        d = null;
         
         Box l = new Box(BoxLayout.X_AXIS);
         l.add(logoL);
         l.setPreferredSize(d);
         l.setMaximumSize(d);
+        
+        // set up feedback label
+        failL = new JLabel("    ", SwingConstants.CENTER);
+        failL.setForeground(Color.RED);
+        d = new Dimension(LABELW+FIELDW,15);
+        failL.setPreferredSize(d);
+        failL.setMaximumSize(d);
+        
+        Box f = new Box(BoxLayout.X_AXIS);
+        f.add(Box.createHorizontalGlue());
+        f.add(failL);
+        f.add(Box.createHorizontalGlue());
+        f.setPreferredSize(d);
+        f.setMaximumSize(d);
         
         // set up input fields
         JLabel inputL = new JLabel("Login:", SwingConstants.RIGHT);
@@ -72,23 +94,23 @@ public class LoginDialog extends JDialog {
         JLabel dbhostL = new JLabel("DB URL:", SwingConstants.RIGHT);
         JLabel dbnameL = new JLabel("DB Name:", SwingConstants.RIGHT);
         
-        final JTextField inputF = new JTextField("jheer");
-        final JTextField passwF = new JPasswordField("msql-121");
-        final JTextField dbhostF = new JTextField("localhost");
-        final JTextField dbnameF = new JTextField("friendster");
+        String[] defs = loadLoginProperties();
+        JTextField inputF = new JTextField(defs[0]);
+        JTextField passwF = new JPasswordField(defs[1]);
+        JTextField dbhostF = new JTextField(defs[2]);
+        JTextField dbnameF = new JTextField(defs[3]);
+        curFields = new JTextField[] {
+                inputF, passwF, dbhostF, dbnameF};
         
         final JButton loginB = new JButton("Login");
         final JButton cancelB = new JButton("Cancel");
         
         ActionListener al = new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                if ( e.getSource() == loginB )
-                    curFields = new JTextField[] {
-                        inputF, passwF, dbhostF, dbnameF};
                 LoginDialog.this.hide();
             } //
         };
-        loginB.addActionListener(al);
+        loginB.addActionListener(new DBConnectAction(this));
         cancelB.addActionListener(al);
         
         Box b = new Box(BoxLayout.X_AXIS);
@@ -105,12 +127,14 @@ public class LoginDialog extends JDialog {
         y.add(Box.createVerticalGlue());
         y.add(l);
         y.add(Box.createVerticalGlue());
-        y.add(Box.createVerticalStrut(15));
+        y.add(Box.createVerticalStrut(5));
+        y.add(f);
+        y.add(Box.createVerticalStrut(5));
         y.add(getBox(inputL, inputF));
         y.add(getBox(passwL, passwF));
         y.add(getBox(dbhostL, dbhostF));
         y.add(getBox(dbnameL, dbnameF));
-        y.add(Box.createVerticalStrut(5));
+        y.add(Box.createVerticalStrut(15));
         y.add(b);
         y.add(Box.createVerticalGlue());
         y.add(Box.createVerticalStrut(10));
@@ -142,16 +166,51 @@ public class LoginDialog extends JDialog {
         return b;
     } //
     
+    public void setLoggedIn(boolean s) {
+        login = s;
+    } //
+    
+    public boolean isLoggedIn() {
+        return login;
+    } //
+    
+    public void setError(String msg) {
+        failL.setText(msg);
+        failL.validate();
+    } //
+    
     public String[] getLoginInfo() {
-        if ( curFields == null )
-            return null;
-        else
-            return new String[] { 
-                curFields[2].getText(),
-                curFields[3].getText(), 
-                curFields[0].getText(), 
-                curFields[1].getText()        
-            };
+        return new String[] { 
+            curFields[0].getText(),
+            curFields[1].getText(), 
+            curFields[2].getText(), 
+            curFields[3].getText()        
+        };
+    } //
+    
+    public String[] loadLoginProperties() {
+        String[] props = new String[] {"","","",""};
+        try {
+            Properties prop = new Properties();
+            prop.load(new FileInputStream("login.properties"));
+            props[0] = prop.getProperty("login","");
+            props[1] = prop.getProperty("password","");
+            props[2] = prop.getProperty("dbhost","");
+            props[3] = prop.getProperty("dbname","");
+        } catch ( Exception e ) {}
+        return props;
+    } //
+    
+    public void saveLoginProperies(String[] props) {
+        Properties prop = new Properties();
+        prop.setProperty("login",    props[0]);
+        prop.setProperty("password", props[1]);
+        prop.setProperty("dbhost",   props[2]);
+        prop.setProperty("dbname",   props[3]);
+        try {
+            prop.save(new FileOutputStream("login.properties"),
+                "Login Properties");
+        } catch ( Exception e ) {}
     } //
     
 } // end of class LoginDialog

@@ -50,9 +50,12 @@ public class BrowsingColorFunction extends ColorFunction {
         ItemRegistry registry = item.getItemRegistry();
         FocusManager fmanager = registry.getFocusManager();
         FocusSet mouseSet = fmanager.getFocusSet(Vizster.MOUSE_KEY);
+        FocusSet searchSet = fmanager.getFocusSet(Vizster.SEARCH_KEY);
         
         if ( mouseSet.contains(item.getEntity()) ) {
             return mouseColor;
+        } else if ( searchSet.contains(item.getEntity()) ) {
+            return Color.YELLOW;
         } else if ( item.isHighlighted() ) {
             return nodeHighlight;
         } else {

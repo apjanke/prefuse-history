@@ -27,16 +27,16 @@ public class VizsterRendererFactory implements RendererFactory {
     public VizsterRendererFactory(Display display) {
         this.display = display;
         
-        imageRenderer = new VizsterImageRenderer();
-        imageRenderer.setMaxImageDimensions(30,30);
-        imageRenderer.setHorizontalPadding(2);
-        //imageRenderer.setRoundedCorner(8,8);
-        
         imageRenderer2 = new VizsterImageRenderer();
         imageRenderer2.setMaxImageDimensions(150,150);
         imageRenderer2.setImageSize(0.2);
         imageRenderer2.setHorizontalPadding(2);
-        //imageRenderer2.setRoundedCorner(8,8);
+        
+        imageRenderer = new VizsterImageRenderer();
+        imageRenderer.setImageFactory(
+            new SharingImageFactory(imageRenderer2.getImageFactory()));
+        imageRenderer.setMaxImageDimensions(30,30);
+        imageRenderer.setHorizontalPadding(2);
         
         edgeRenderer  = new VizsterEdgeRenderer();
     } //

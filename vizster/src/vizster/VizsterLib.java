@@ -2,7 +2,6 @@ package vizster;
 
 import java.awt.Component;
 
-import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.UIManager;
 
@@ -19,8 +18,6 @@ public class VizsterLib {
 
     public static final int DEFAULT_ERROR = 0;
     public static final int PROFILE_ERROR = 1;
-    
-    private static LoginDialog loginDialog;
     
     /**
      * Exit the application upon occurrence of an error
@@ -72,42 +69,46 @@ public class VizsterLib {
         JOptionPane.showMessageDialog(c, msg);
     } //
     
-    /**
-     * Get login information.
-     * @param frame
-     * @return
-     */
-    public static final String[] authenticate(JFrame frame) {
-        if ( loginDialog == null )
-            loginDialog = new LoginDialog(frame);
-        loginDialog.show();
-        return loginDialog.getLoginInfo();
-    } //
+//    /**
+//     * Get login information.
+//     * @param frame
+//     * @return
+//     */
+//    public static final String[] authenticate(JFrame frame) {
+//        if ( loginDialog == null )
+//            loginDialog = new LoginDialog(frame);
+//        loginDialog.show();
+//        return loginDialog.getLoginInfo();
+//    } //
     
-    public static final boolean authenticate(JFrame frame, 
+    public static final boolean authenticate(Vizster owner, 
             DatabaseLoader loader, int retries) {
-        for (int i=1; retries>=0 && i<=retries; i++) {
-            try {
-                if ( loginDialog == null )
-                    loginDialog = new LoginDialog(frame);
-                loginDialog.show();
-                String[] auth = loginDialog.getLoginInfo();
-                if ( auth == null )
-                    return false;
-                loader.connect("com.mysql.jdbc.Driver",
-                        // first use the host and database name
-                        "jdbc:mysql://" + auth[0] + "/" + auth[1],
-                        auth[2],    // now use the login
-                        auth[3]);   // and finally the password
-                return true;
-            } catch (Exception e) {
-                e.printStackTrace();
-                VizsterLib.defaultError(frame,"Couldn't connect to database");
-            }
-            if ( i == retries )
-                VizsterLib.errexit(null,frame,"Too many login attempts.");
-        }
-        return false;
+        LoginDialog ld = new LoginDialog(owner);
+        ld.show();
+        return ld.isLoggedIn();
+        
+//        for (int i=1; retries>=0 && i<=retries; i++) {
+//            try {
+//                if ( loginDialog == null )
+//                    loginDialog = new LoginDialog(frame);
+//                loginDialog.show();
+//                String[] auth = loginDialog.getLoginInfo();
+//                if ( auth == null )
+//                    return false;
+//                loader.connect("com.mysql.jdbc.Driver",
+//                        // first use the host and database name
+//                        "jdbc:mysql://" + auth[0] + "/" + auth[1],
+//                        auth[2],    // now use the login
+//                        auth[3]);   // and finally the password
+//                return true;
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//                VizsterLib.defaultError(frame,"Couldn't connect to database");
+//            }
+//            if ( i == retries )
+//                VizsterLib.errexit(null,frame,"Too many login attempts.");
+//        }
+//        return false;
     } //
     
     public static final void setLookAndFeel() {
