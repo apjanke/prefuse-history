@@ -81,8 +81,8 @@ public class LuceneIndexBuilder {
         dbp.setDriver("com.mysql.jdbc.Driver");
         dbp.setProtocol("jdbc:mysql:");
         dbp.setDatabase("friendster");
-        dbp.setUser("jheer");
-        dbp.setPassword("ripley-04");
+        dbp.setUser("guest");
+        dbp.setPassword("");
         
         // make shorthands for document field types
         int TEXT       = LuceneQueryProcessor.TEXT;
