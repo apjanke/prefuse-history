@@ -1,8 +1,6 @@
 package enronic.util;
 
 import javax.swing.Action;
-import javax.swing.ButtonGroup;
-import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
@@ -28,11 +26,6 @@ public class EnronicMenuBar extends JMenuBar {
     static final String FSIM = "Configure Force Simulator...";
     static final String ANIM = "Toggle Animation";
     static final String LAYT = "Re-Compute Layout";
-    static final String GMAP = "Grayscale";
-    static final String HMAP = "Hot";
-    static final String CMAP = "Cool";
-    static final String ECOM = "Enable Community Analysis";
-    static final String DCOM = "Disable Community Analysis";
     
     private Enronic enronic;
     
@@ -45,8 +38,6 @@ public class EnronicMenuBar extends JMenuBar {
         JMenu fileM = new JMenu("File");
         JMenu laytM = new JMenu("Layout");
         JMenu toolM = new JMenu("Tools");
-        JMenu cmapM = new JMenu("ColorMaps");
-        JMenu commM = new JMenu("Community");
         
         JMenuItem dbugI = new JMenuItem(DBUG);
         JMenuItem loadI = new JMenuItem(LOAD);
@@ -57,16 +48,6 @@ public class EnronicMenuBar extends JMenuBar {
         JMenuItem fsimI = new JMenuItem(FSIM);
         JMenuItem animI = new JMenuItem(ANIM);
         JMenuItem laytI = new JMenuItem(LAYT);
-        JMenuItem gmapI = new JCheckBoxMenuItem(GMAP);
-        JMenuItem hmapI = new JCheckBoxMenuItem(HMAP);
-        JMenuItem cmapI = new JCheckBoxMenuItem(CMAP);
-        JMenuItem ecomI = new JMenuItem(ECOM);
-        JMenuItem dcomI = new JMenuItem(DCOM);
-        
-        ButtonGroup buttG = new ButtonGroup();
-        buttG.add(gmapI); gmapI.setSelected(true);
-        buttG.add(hmapI);
-        buttG.add(cmapI);
         
         dbugI.setAccelerator(KeyStroke.getKeyStroke("ctrl D"));
         saveI.setAccelerator(KeyStroke.getKeyStroke("ctrl S"));
@@ -74,9 +55,6 @@ public class EnronicMenuBar extends JMenuBar {
         fsimI.setAccelerator(KeyStroke.getKeyStroke("ctrl F"));
         animI.setAccelerator(KeyStroke.getKeyStroke("ctrl K"));
         laytI.setAccelerator(KeyStroke.getKeyStroke("ctrl L"));
-        gmapI.setAccelerator(KeyStroke.getKeyStroke("ctrl 1"));
-        hmapI.setAccelerator(KeyStroke.getKeyStroke("ctrl 2"));
-        cmapI.setAccelerator(KeyStroke.getKeyStroke("ctrl 3"));
         
         exitI.setActionCommand(EXIT);
         loadI.setActionCommand(LOAD);
@@ -86,11 +64,6 @@ public class EnronicMenuBar extends JMenuBar {
         fsimI.setActionCommand(FSIM);
         animI.setActionCommand(ANIM);
         laytI.setActionCommand(LAYT);
-        gmapI.setActionCommand(GMAP);
-        hmapI.setActionCommand(HMAP);
-        cmapI.setActionCommand(CMAP);
-        ecomI.setActionCommand(ECOM);
-        dcomI.setActionCommand(DCOM);
         
         dbugI.addActionListener(new DebugInfoAction(enronic));
         
@@ -106,14 +79,6 @@ public class EnronicMenuBar extends JMenuBar {
         animI.addActionListener(new ToggleAnimationAction(enronic));
         laytI.addActionListener(new StaticLayoutAction(enronic));
         
-        ColorMapAction cmapA = new ColorMapAction(enronic);
-        gmapI.addActionListener(cmapA);
-        hmapI.addActionListener(cmapA);
-        cmapI.addActionListener(cmapA);
-        
-        ecomI.addActionListener(new CommunityEnableAction(enronic));
-        dcomI.addActionListener(new CommunityDisableAction(enronic));
-        
         fileM.add(dbugI);
         fileM.add(loadI);
         fileM.add(connI);
@@ -123,17 +88,10 @@ public class EnronicMenuBar extends JMenuBar {
         laytM.add(laytI);
         toolM.add(gotoI);
         toolM.add(fsimI);
-        cmapM.add(gmapI);
-        cmapM.add(hmapI);
-        cmapM.add(cmapI);
-        commM.add(ecomI);
-        commM.add(dcomI);
         
         add(fileM);
         add(laytM);
         add(toolM);
-        add(cmapM);
-        add(commM);
     } //
     
 } // end of class enronicMenuBar

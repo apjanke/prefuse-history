@@ -9,12 +9,13 @@ import java.util.Iterator;
 import java.util.List;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
 
 import prefusex.community.CommunitySet;
-
 import edu.berkeley.guir.prefuse.Display;
 import edu.berkeley.guir.prefuse.EdgeItem;
 import edu.berkeley.guir.prefuse.FocusManager;
@@ -60,11 +61,12 @@ import enronic.color.BrowsingColorFunction;
 import enronic.color.ComparisonColorFunction;
 import enronic.data.EnronicDBLoader;
 import enronic.render.EnronicRendererFactory;
+import enronic.util.CommunityPanel;
+import enronic.util.ConnectivityPanel;
 import enronic.util.EnronicMenuBar;
 import enronic.util.Legend;
 import enronic.util.MessagePanel;
 import enronic.util.ProfilePanel;
-import enronic.util.SearchPanel;
 
 /**
  * An application for visual exploration of the friendster social networking
@@ -106,7 +108,8 @@ public class Enronic extends JFrame {
     private Display display;
     private MessagePanel messageview;
     private ProfilePanel profile;
-    private SearchPanel searcher;
+    private ConnectivityPanel connecter;
+    private CommunityPanel communer;
     
     // number of login attempts before application exits
     private int loginRetries = 5;
@@ -189,7 +192,9 @@ public class Enronic extends JFrame {
         // create the panel which shows friendster profile data
         profile = new ProfilePanel(this);
         // create the search panel
-        searcher = new SearchPanel(this);
+        connecter = new ConnectivityPanel(this);
+        communer = new CommunityPanel(this);
+        
         
         // initialize the prefuse renderers and action lists
         initPrefuse();
@@ -315,19 +320,16 @@ public class Enronic extends JFrame {
     
     private void initUI() {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        
-        // recenter the display upon resizing
-//        display.addComponentListener(new ComponentAdapter() {
-//            public void componentResized(ComponentEvent e) {
-//                centerDisplay();
-//            } //
-//        });
  
-        searcher.setBorder(BorderFactory.createEmptyBorder(4,4,4,4));
+        connecter.setBorder(BorderFactory.createEmptyBorder(4,4,4,4));
+        
+        Box b = new Box(BoxLayout.X_AXIS);
+        b.add(connecter);
+        b.add(communer);
         
         JPanel main = new JPanel(new BorderLayout());
         main.add(display, BorderLayout.CENTER);
-        main.add(searcher, BorderLayout.SOUTH);
+        main.add(b, BorderLayout.SOUTH);
         
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
                 false, main, messageview);
@@ -336,7 +338,6 @@ public class Enronic extends JFrame {
         split.setOneTouchExpandable(true);
         
         getContentPane().add(split);
-        //getContentPane().add(main);
     } //
     
     public void centerDisplay() {
@@ -531,8 +532,8 @@ public class Enronic extends JFrame {
         Color fg = b ? Color.BLACK : Color.WHITE;
         display.setBackground(bg);
         display.setForeground(fg);
-        searcher.setBackground(bg);
-        searcher.setForeground(fg);
+        connecter.setBackground(bg);
+        connecter.setForeground(fg);
         ActionSwitch as = (ActionSwitch)actionMap.get("colorSwitch");
         as.setSwitchValue(b?0:1);
         renderers.setBrowseMode(b);

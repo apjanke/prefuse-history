@@ -40,9 +40,9 @@ public class BrowsingColorFunction extends ColorFunction {
             communityColor = null;
         } else {
             communityColor = new ColorMap(
-                ColorMap.getHSBMap(community.size()+1, 0.2f, 1.f),
+                ColorMap.getHSBMap(community.getMaxCommunityCount(), 0.2f, 1.f),
                 0,
-                community.size()+1);
+                community.getMaxCommunityCount());
         }
     } //
     

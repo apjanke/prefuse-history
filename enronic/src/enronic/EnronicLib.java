@@ -1,8 +1,10 @@
 package enronic;
 
 import java.awt.Component;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.URL;
 
 import javax.swing.JOptionPane;
 import javax.swing.UIManager;
@@ -83,7 +85,31 @@ public class EnronicLib {
     	throws FileNotFoundException, IOException
     {
         XMLGraphReader gl = new XMLGraphReader();
-        return gl.loadGraph(graphfile);
+        boolean isFile = false;
+        try {
+            File f = new File(graphfile);
+            isFile = f.exists();
+        } catch ( Exception e ) {
+        }
+        if ( isFile )
+            return gl.loadGraph(graphfile);
+        else {
+            URL url = null;
+            try {
+                url = EnronicLib.class.getResource(graphfile);
+            } catch ( Exception e ) {
+            }
+            if ( url == null ) {
+                try {
+                    url = EnronicLib.class.getResource("/"+graphfile);
+                } catch ( Exception e ) {
+                }
+            }
+            if ( url != null )
+                return gl.loadGraph(url);
+            else
+                throw new IOException("Couldn't find "+graphfile);
+        }
     } //
     
     public static final void setLookAndFeel() {
