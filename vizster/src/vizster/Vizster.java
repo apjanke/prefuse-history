@@ -345,6 +345,10 @@ public class Vizster extends JFrame {
         return registry;
     } //
     
+    public Display getDisplay() {
+        return display;
+    } //
+    
     public VizsterDBLoader getLoader() {
         return loader;
     } //
