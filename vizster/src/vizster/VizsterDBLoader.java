@@ -147,7 +147,7 @@ public class VizsterDBLoader {
     } //
     
     public Node loadNode(ResultSet rs, Node src) throws SQLException {
-        Node node = null;;
+        Node node = null;
         for ( int i=0; i<m_columns.length; i++ ) {
             String value = rs.getString(m_columns[i]);
             if ( i == 0 ) {
