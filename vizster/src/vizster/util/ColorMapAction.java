@@ -34,6 +34,7 @@ public class ColorMapAction extends AbstractAction {
             map = 2;
         }
         vizster.getComparisonColorFunction().setColorMap(map);
+        vizster.redraw();
     } //
 
 } // end of class ColorMapAction

@@ -1,9 +1,14 @@
 package vizster;
 
 import java.awt.Component;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 
 import javax.swing.JOptionPane;
 import javax.swing.UIManager;
+
+import edu.berkeley.guir.prefuse.graph.Graph;
+import edu.berkeley.guir.prefuse.graph.io.XMLGraphReader;
 
 import vizster.util.LoginDialog;
 
@@ -70,8 +75,15 @@ public class VizsterLib {
     
     public static final boolean authenticate(Vizster owner, int retries) {
         LoginDialog ld = new LoginDialog(owner);
-        ld.show();
+        ld.setVisible(true);
         return ld.isLoggedIn();
+    } //
+    
+    public static final Graph loadGraph(String graphfile) 
+    	throws FileNotFoundException, IOException
+    {
+        XMLGraphReader gl = new XMLGraphReader();
+        return gl.loadGraph(graphfile);
     } //
     
     public static final void setLookAndFeel() {

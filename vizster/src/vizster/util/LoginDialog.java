@@ -106,7 +106,7 @@ public class LoginDialog extends JDialog {
         
         ActionListener al = new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                LoginDialog.this.hide();
+                LoginDialog.this.setVisible(false);
             } //
         };
         loginB.addActionListener(new DBConnectAction(this));

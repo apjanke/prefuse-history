@@ -24,6 +24,7 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
 import vizster.Vizster;
+import vizster.VizsterDBLoader;
 import edu.berkeley.guir.prefuse.FocusManager;
 import edu.berkeley.guir.prefuse.ItemRegistry;
 import edu.berkeley.guir.prefuse.NodeItem;
@@ -59,7 +60,7 @@ public class SearchPanel extends JPanel
     private int    m_curResult;
 
     public SearchPanel(Vizster vizster) {
-        searchAttr = vizster.getLoader().getColumns();
+        searchAttr = VizsterDBLoader.ALL_COLUMNS;
         
         ItemRegistry registry = vizster.getItemRegistry();
         FocusManager fmanager = registry.getFocusManager();

@@ -42,6 +42,7 @@ public class ColorAction extends AbstractAction {
             tog.putClientProperty("on", Boolean.FALSE);
             vizster.setMode(Vizster.BROWSE_MODE);
         }
+        vizster.redraw();
     } //
 
 } // end of class ColorAction

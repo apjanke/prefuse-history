@@ -37,7 +37,7 @@ public class DBConnectAction extends AbstractAction {
                     auth[1]);   // and finally the password
             loginD.setLoggedIn(true);
             loginD.saveLoginProperies(auth);
-            loginD.hide();
+            loginD.setVisible(false);
         } catch (Exception ex) {
             loginD.setLoggedIn(false);
             String msg = ex.getMessage();

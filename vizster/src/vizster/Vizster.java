@@ -30,13 +30,17 @@ import edu.berkeley.guir.prefuse.action.Action;
 import edu.berkeley.guir.prefuse.action.ActionMap;
 import edu.berkeley.guir.prefuse.action.ActionSwitch;
 import edu.berkeley.guir.prefuse.action.RepaintAction;
+import edu.berkeley.guir.prefuse.action.animate.PolarLocationAnimator;
+import edu.berkeley.guir.prefuse.action.assignment.Layout;
 import edu.berkeley.guir.prefuse.action.filter.FisheyeGraphFilter;
 import edu.berkeley.guir.prefuse.activity.ActionList;
+import edu.berkeley.guir.prefuse.activity.SlowInSlowOutPacer;
 import edu.berkeley.guir.prefuse.event.FocusEvent;
 import edu.berkeley.guir.prefuse.event.FocusListener;
 import edu.berkeley.guir.prefuse.graph.DefaultGraph;
 import edu.berkeley.guir.prefuse.graph.Entity;
 import edu.berkeley.guir.prefuse.graph.Graph;
+import edu.berkeley.guir.prefuse.graph.GraphLib;
 import edu.berkeley.guir.prefuse.graph.Node;
 import edu.berkeley.guir.prefuse.graph.event.GraphLoaderListener;
 import edu.berkeley.guir.prefuse.graph.external.GraphLoader;
@@ -53,6 +57,7 @@ import edu.berkeley.guir.prefusex.force.ForceSimulator;
 import edu.berkeley.guir.prefusex.force.NBodyForce;
 import edu.berkeley.guir.prefusex.force.SpringForce;
 import edu.berkeley.guir.prefusex.layout.ForceDirectedLayout;
+import edu.berkeley.guir.prefusex.layout.FruchtermanReingoldLayout;
 
 /**
  * An application for visual exploration of the friendster social networking
@@ -64,7 +69,8 @@ import edu.berkeley.guir.prefusex.layout.ForceDirectedLayout;
 public class Vizster extends JFrame {
 
     // default starting friendster user id
-    private static final String DEFAULT_START_UID = "186297";
+    public static final String DEFAULT_START_UID = "186297";
+    public static final String ID_FIELD = "uid";
     
     // keys for additional focus sets
     public static final String CLICK_KEY  = "clicked";
@@ -77,11 +83,16 @@ public class Vizster extends JFrame {
     
     // prefuse architecture components
     private ItemRegistry registry;
-    private ActionList forces, filter;
+    private ActionList redraw, forces, altForces, altAnimate, filter;
     private VizsterDBLoader loader;
+    private boolean useDatabase;
+    private String datafile;
     private VizsterRendererFactory renderers;
     private ForceSimulator fsim;
     private ActionMap actionMap;
+    
+    // control if layout remains animated
+    private boolean animate = true;
     
     // ui components
     private Display display;
@@ -98,49 +109,67 @@ public class Vizster extends JFrame {
      */
     public static void main(String[] argv) {
         VizsterLib.setLookAndFeel();
-        String startUID = argv.length > 0 ? argv[0] : DEFAULT_START_UID;
-        new Vizster(startUID);
+        //String startUID = argv.length > 0 ? argv[0] : DEFAULT_START_UID;
+        String startUID = DEFAULT_START_UID;
+        String file = argv.length > 0 ? argv[0] : null;
+        new Vizster(startUID, file);
     } //
     
     /**
      * Construct a new Vizster application instance.
      */
     public Vizster() {
-        this(DEFAULT_START_UID);
+        this(DEFAULT_START_UID, null);
     } //
     
     /**
      * Construct a new Vizster application instance.
-     * @param startUID the friendster user id to show first
+     * @param startUID the user id to show first
      */
     public Vizster(String startUID) {
+        this(startUID, null);
+    } //
+    
+    /**
+     * Construct a new Vizster application instance.
+     * @param startUID the user id to show first
+     * @param datafile the data file to use, if null, 
+     *   a connection dialog for a database will be provided 
+     */
+    public Vizster(String startUID, String datafile) {
         super("Vizster");
         
-        // initialize empty graph and registry
-        Graph g = new DefaultGraph();
-        registry = new ItemRegistry(g);
+        // determine input method
+        this.datafile = datafile;
+        this.useDatabase = (datafile==null);
+        
+        // create the registry
+        registry = new ItemRegistry(new DefaultGraph());
         
         // initialize focus handling
-        // -We already get a default focus set, use it for centered nodes
-        // -Add another set for nodes that are clicked, to show profiles
+        // -We already get a default focus set, use it for double-clicked nodes
+        // -Add another set for nodes that are single-clicked, to show profiles
         // -Add another set for nodes moused-over, providing highlights
+        // -Add another set for keyword search hits
         FocusManager fmanager = registry.getFocusManager();
         fmanager.putFocusSet(CLICK_KEY, new DefaultFocusSet());
         fmanager.putFocusSet(MOUSE_KEY, new DefaultFocusSet());
         final KeywordSearchFocusSet searchSet = new KeywordSearchFocusSet();
         fmanager.putFocusSet(SEARCH_KEY, searchSet);
         
-        // create a new loader to talk to the database
-        loader = new VizsterDBLoader(registry, VizsterDBLoader.ALL_COLUMNS);
-        // register update listener with graph loader
-        loader.addGraphLoaderListener(new GraphLoaderListener() {
-            public void entityLoaded(GraphLoader loader, Entity e) {
-                filter.runNow();
-            } //
-            public void entityUnloaded(GraphLoader loader, Entity e) {
-                filter.runNow();
-            } //
-        });
+        if ( useDatabase ) {
+	        // create a new loader to talk to the database if needed
+	        loader = new VizsterDBLoader(registry, VizsterDBLoader.ALL_COLUMNS);
+	        // register update listener with graph loader
+	        loader.addGraphLoaderListener(new GraphLoaderListener() {
+	            public void entityLoaded(GraphLoader loader, Entity e) {
+	                filter.runNow(); forces.runNow();
+	            } //
+	            public void entityUnloaded(GraphLoader loader, Entity e) {
+	                filter.runNow(); forces.runNow();
+	            } //
+	        });
+        }
         
         // initialize user interface components
         // set up the primary display
@@ -154,35 +183,16 @@ public class Vizster extends JFrame {
         // initialize the prefuse renderers and action lists
         initPrefuse();
         
-        // attempt to login to database
-        if ( !VizsterLib.authenticate(this, loginRetries) ) {
-            System.exit(0); // user canceled login so exit
-        }
-        
-        // load the initial profile from the database
-        Node r = null;
-        try {
-            r = loader.getProfileNode(startUID);
-        } catch ( SQLException e ) {
-            e.printStackTrace();
-            VizsterLib.profileLoadError(this, startUID);
-            System.exit(1);
-        }
-        // add initial node to the graph, and set as focus
-        g.addNode(r);
-        registry.getDefaultFocusSet().set(r);
-        fmanager.getFocusSet(CLICK_KEY).set(r);
-        
         // initialize the display's control listeners
         display.addControlListener(new FocusControl(2));
         display.addControlListener(new FocusControl(1, CLICK_KEY));
         display.addControlListener(new FocusControl(0, MOUSE_KEY));
-        display.addControlListener(new NeighborHighlightControl());
-        display.addControlListener(new DragControl(false, true));
-        display.addControlListener(new PanControl(false));
+        display.addControlListener(new NeighborHighlightControl(redraw));
+        display.addControlListener(new DragControl(true, true));
+        display.addControlListener(new PanControl(true));
         
         // add a zoom control that works everywhere
-        ZoomControl zc = new ZoomControl(false);
+        ZoomControl zc = new ZoomControl(true);
         display.addMouseListener(zc);
         display.addMouseMotionListener(zc);
         
@@ -193,8 +203,77 @@ public class Vizster extends JFrame {
         
         // wait until graphics are available
         while ( display.getGraphics() == null );
+        
+        // load the network data
+        loadGraph(datafile, startUID);
+    } //
+    
+    public void loadGraph(String datafile, String startUID) {
+        // stop any running actions
+        forces.cancel();
+        
+        // alter settings as needed
+        useDatabase = (datafile==null);
+        
+        // load graph
+        try {
+	        Graph g = null;
+	        if ( useDatabase ) {
+	            g = new DefaultGraph();
+	        } else {
+	            g = VizsterLib.loadGraph(datafile);
+	        }
+	        registry.setGraph(g);
+        } catch ( Exception e ) {
+            e.printStackTrace();
+            VizsterLib.defaultError(this, "Couldn't load input graph.");
+            return;
+        }
+        
+        // attempt to login to database if necessary
+        if ( useDatabase && !VizsterLib.authenticate(this, loginRetries) ) {
+            //System.exit(0); // user canceled login so exit
+            return;
+        }
+        
+        // retrieve the initial profile and set as focus
+        Node r = getInitialNode(startUID);
+        registry.getDefaultFocusSet().set(r);
+        registry.getFocusManager().getFocusSet(CLICK_KEY).set(r);
+        
         filter.runNow();
-        forces.runNow();
+        if ( animate ) {
+            forces.runNow();
+        } else {
+            runStaticLayout();
+        }
+    } //
+    
+    private Node getInitialNode(String uid) {
+        Node r = null;
+        if ( useDatabase ) {
+	        try {
+	            r = loader.getProfileNode(uid);
+	        } catch ( SQLException e ) {
+	            e.printStackTrace();
+	            VizsterLib.profileLoadError(this, uid);
+	            System.exit(1);
+	        }
+	        // add initial node to the graph
+	        registry.getGraph().addNode(r);
+        } else {
+            if ( uid == null ) {
+                r = GraphLib.getMostConnectedNodes(registry.getGraph())[0]; 
+            } else {
+                Node[] matches = GraphLib.search(registry.getGraph(), ID_FIELD, uid);
+                if ( matches.length > 0 ) {
+                    r = matches[0];
+                } else {
+                    r = GraphLib.getMostConnectedNodes(registry.getGraph())[0];
+                }
+            }
+        }
+        return r;
     } //
     
     private void initUI() {
@@ -255,10 +334,39 @@ public class Vizster extends JFrame {
         renderers.setBrowseMode(true);
         registry.setRendererFactory(renderers);
         
+        // initialize the force simulator
+        fsim = new ForceSimulator();
+        fsim.addForce(new NBodyForce(-1.5f, -1f, 0.9f));
+        final SpringForce springF = new SpringForce(2E-5f, 150f);
+        fsim.addForce(springF);
+        fsim.addForce(new DragForce(-0.005f));
+        
         // set up actions
         FisheyeGraphFilter      feyeFilter = new FisheyeGraphFilter(-1);
         BrowsingColorFunction   bcolorFunc = new BrowsingColorFunction();
         ComparisonColorFunction ccolorFunc = new ComparisonColorFunction();
+        
+        Layout frLayout = new FruchtermanReingoldLayout(400);
+        Layout fdLayout = new ForceDirectedLayout(fsim, false, false) {
+            private float normal = 2E-5f;
+            private float slack1 = 2E-6f;
+            private float slack2 = 2E-7f;
+            protected float getSpringLength(NodeItem n1, NodeItem n2) {
+                int minE = Math.min(n1.getEdgeCount(),n2.getEdgeCount());
+                double doi = Math.max(n1.getDOI(), n2.getDOI());
+                return ( minE == 1 ? 75.f : (doi==0? 200.f : 100.f));
+            } //
+            protected float getSpringCoefficient(NodeItem n1, NodeItem n2) {
+                int maxE = Math.max(n1.getEdgeCount(),n2.getEdgeCount());
+                if ( maxE <= 80 )
+                    return normal;
+                else if ( maxE <= 180 )
+                    return slack1;
+                else
+                    return slack2;
+            } //
+        };
+        
         ActionSwitch colorSwitch = new ActionSwitch(
                 new Action[] {bcolorFunc, ccolorFunc}, 0);
         
@@ -267,13 +375,13 @@ public class Vizster extends JFrame {
         actionMap.put("browseColors", bcolorFunc);
         actionMap.put("compareColors", ccolorFunc);
         actionMap.put("colorSwitch", colorSwitch);
+        actionMap.put("dynamicForces", fdLayout);
+        actionMap.put("staticForces", frLayout);
         
-        // initialize the force simulator
-        fsim = new ForceSimulator();
-        fsim.addForce(new NBodyForce(-1.5f, -1f, 0.9f));
-        final SpringForce springF = new SpringForce(2E-5f, 150f);
-        fsim.addForce(springF);
-        fsim.addForce(new DragForce(-0.005f));
+        // initialize basic recoloring-drawing action list
+        redraw = new ActionList(registry, 0);
+        redraw.add(colorSwitch);
+        redraw.add(new RepaintAction());
         
         // initialize the filter action list
         filter = new ActionList(registry);
@@ -294,27 +402,18 @@ public class Vizster extends JFrame {
                 }
             } //
         });
-        forces.add(new ForceDirectedLayout(fsim, false, false) {
-            private float normal = 2E-5f;
-            private float slack1 = 2E-6f;
-            private float slack2 = 2E-7f;
-            protected float getSpringLength(NodeItem n1, NodeItem n2) {
-                int minE = Math.min(n1.getEdgeCount(),n2.getEdgeCount());
-                double doi = Math.max(n1.getDOI(), n2.getDOI());
-                return ( minE == 1 ? 75.f : (doi==0? 200.f : 100.f));
-            } //
-            protected float getSpringCoefficient(NodeItem n1, NodeItem n2) {
-                int maxE = Math.max(n1.getEdgeCount(),n2.getEdgeCount());
-                if ( maxE <= 80 )
-                    return normal;
-                else if ( maxE <= 180 )
-                    return slack1;
-                else
-                    return slack2;
-            } //
-        });
-        forces.add(colorSwitch);
-        forces.add(new RepaintAction());
+        forces.add(fdLayout);
+        forces.add(redraw);
+        
+        // initialize action list for an alternate, static layout
+        altForces = new ActionList(registry, 0);
+        altForces.add(frLayout);
+        altForces.add(colorSwitch);
+        
+        altAnimate = new ActionList(registry, 2000, 20);
+        altAnimate.setPacingFunction(new SlowInSlowOutPacer());
+        altAnimate.add(new PolarLocationAnimator());
+        altAnimate.add(new RepaintAction());
         
         // initialize focus listeners
         FocusSet defaultSet = registry.getDefaultFocusSet();
@@ -326,7 +425,9 @@ public class Vizster extends JFrame {
                 
                 centerDisplay(); // center display on the new focus
                 filter.runNow(); // refilter
-                loader.loadNeighbors((Node)e.getFirstAdded());
+                setAnimate(true);
+                if ( useDatabase )
+                    loader.loadNeighbors((Node)e.getFirstAdded());
             } //
         });
         
@@ -337,6 +438,13 @@ public class Vizster extends JFrame {
                 // update profile panel to show new focus
                 Node f = (Node)e.getFirstAdded();
                 profile.updatePanel(f);
+            } //
+        });
+        
+        FocusSet searcher = fmanager.getFocusSet(SEARCH_KEY);
+        searcher.addFocusListener(new FocusListener() {
+            public void focusChanged(FocusEvent e) {
+                redraw();
             } //
         });
     } //
@@ -385,6 +493,28 @@ public class Vizster extends JFrame {
     
     public BrowsingColorFunction getBrowsingColorFunction() {
         return (BrowsingColorFunction)actionMap.get("browseColors");
+    } //
+    
+    public boolean isAnimate() {
+        return animate;
+    } //
+    
+    public void redraw() {
+        //redraw.runNow();
+    } //
+    
+    public void setAnimate(boolean b) {
+        if ( b ) {
+            forces.runNow();
+        } else {
+            forces.cancel();
+        }
+        animate = b;
+    } //
+    
+    public void runStaticLayout() {
+        altAnimate.runAfter(altForces);
+        altForces.runNow();
     } //
     
 } // end of class Vizster
