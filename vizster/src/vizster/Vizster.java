@@ -253,18 +253,6 @@ public class Vizster extends JFrame {
         filter = new ActionList(registry);
         filter.add(feyeFilter);
         filter.add(colorFunc);
-        filter.add(new AbstractAction() {
-            private float normal = 2E-5f;
-            private float slack  = 2E-6f;
-            public void run(ItemRegistry registry, double frac) {
-                int sz = registry.size(ItemRegistry.DEFAULT_NODE_CLASS);
-                if ( sz > 100 ) {
-                    springF.setParameter(SpringForce.SPRING_COEFF, slack);
-                } else {
-                    springF.setParameter(SpringForce.SPRING_COEFF, normal);
-                }
-            } //
-        });
         
         // initilaize the forces action list
         forces = new ActionList(registry,-1,20);
@@ -281,11 +269,22 @@ public class Vizster extends JFrame {
             } //
         });
         forces.add(new ForceDirectedLayout(fsim, false, false) {
+            private float normal = 2E-5f;
+            private float slack1 = 2E-6f;
+            private float slack2 = 5E-7f;
             protected float getSpringLength(NodeItem n1, NodeItem n2) {
-                if (n1.getEdgeCount() == 1 || n2.getEdgeCount() == 1)
-                    return 75.f;
+                int minE = Math.min(n1.getEdgeCount(),n2.getEdgeCount());
                 double doi = Math.max(n1.getDOI(), n2.getDOI());
-                return 200.f/Math.abs((float)doi-1);
+                return ( minE == 1 ? 75.f : (doi==0? 200.f : 100.f));
+            } //
+            protected float getSpringCoefficient(NodeItem n1, NodeItem n2) {
+                int maxE = Math.max(n1.getEdgeCount(),n2.getEdgeCount());
+                if ( maxE <= 80 )
+                    return normal;
+                else if ( maxE <= 180 )
+                    return slack1;
+                else
+                    return slack2;
             } //
         });
         forces.add(colorFunc);

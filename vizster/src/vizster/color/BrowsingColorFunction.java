@@ -26,6 +26,7 @@ public class BrowsingColorFunction extends ColorFunction {
     private Color nodeHighlight  = ColorLib.getColor(255,200,125);
     private Color defaultColor   = ColorLib.getColor(220,220,255);
     private Color fixedColor     = ColorLib.getColor(245,200,245);
+    private Color searchColor    = ColorLib.getColor(255,255,150);
     
     public Paint getColor(VisualItem item) {
         ItemRegistry registry = item.getItemRegistry();
@@ -55,7 +56,7 @@ public class BrowsingColorFunction extends ColorFunction {
         if ( mouseSet.contains(item.getEntity()) ) {
             return mouseColor;
         } else if ( searchSet.contains(item.getEntity()) ) {
-            return Color.YELLOW;
+            return searchColor;
         } else if ( item.isHighlighted() ) {
             return nodeHighlight;
         } else {
