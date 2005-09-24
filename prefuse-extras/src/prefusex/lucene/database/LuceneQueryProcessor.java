@@ -18,8 +18,9 @@ public class LuceneQueryProcessor implements QueryProcessor {
  
     public final static int TEXT       = 0;
     public final static int KEYWORD    = 1;
-    public final static int UNINDEXED  = 2;
-    public final static int UNSTORED   = 3;
+    public final static int DATE       = 2;
+    public final static int UNINDEXED  = 3;
+    public final static int UNSTORED   = 4;
     
     private String  dbTable;
     private String  columns[];
@@ -93,6 +94,9 @@ public class LuceneQueryProcessor implements QueryProcessor {
                     break;
                 case KEYWORD:
                     d.add(Field.Keyword(columns[i], s));
+                    break;
+                case DATE:
+                    d.add(Field.Keyword(columns[i], rs.getDate(i+1)));
                     break;
                 case UNSTORED:
                     d.add(Field.UnStored(columns[i], s));
