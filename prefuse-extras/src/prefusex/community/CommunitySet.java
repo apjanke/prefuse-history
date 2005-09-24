@@ -56,6 +56,8 @@ public class CommunitySet extends DefaultFocusSet {
     } //
     
     public void init(ItemRegistry registry) {
+    	clear();
+    	
         this.registry = registry;
         Graph g = registry.getFilteredGraph();
         mat = new PrefuseMatrix(g);
@@ -67,11 +69,11 @@ public class CommunitySet extends DefaultFocusSet {
 	        }
         }
         
-        CommunityStructure comm = new CommunityStructureDirected();
-        comm.run(mat);
+        CommunityStructure cstruct = new CommunityStructureDirected();
+        cstruct.run(mat);
         
-        mergeList = comm.getMergeList();
-        qvals = comm.getQValues();
+        mergeList = cstruct.getMergeList();
+        qvals = cstruct.getQValues();
         
         reconstruct(qvals.length-1);
         reconstruct(getMaxQValueIndex());
@@ -144,6 +146,7 @@ public class CommunitySet extends DefaultFocusSet {
 	        }
 	        // set community count
 	        this.numCommunities = merge.size();
+	        //System.out.println("numcomm = "+this.numCommunities);
 	        
 	        // re-label and index community groups
 	        int id = 0;
@@ -169,6 +172,7 @@ public class CommunitySet extends DefaultFocusSet {
 	            id++;
 	        }
         }
+        //System.out.println("reconstruct communities");
     } //
     
     public int getMaxCommunityCount() {
