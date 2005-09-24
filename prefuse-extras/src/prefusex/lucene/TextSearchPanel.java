@@ -5,18 +5,25 @@ import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.awt.Image;
 import java.awt.Insets;
+import java.awt.MediaTracker;
 import java.awt.Polygon;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.net.URL;
 import java.util.Iterator;
 
+import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
@@ -52,12 +59,18 @@ public class TextSearchPanel extends JPanel
     private IconButton downArrow = new IconButton(new ArrowIcon(ArrowIcon.DOWN),
             new ArrowIcon(ArrowIcon.DOWN_DEPRESSED));
 
-    private String[] searchAttr;
-    private Entity m_results[];
-    private int    m_curResult;
+    private String[] m_searchAttr;
+    private Entity   m_results[];
+    private int      m_curResult;
+    
+    private boolean m_includeSpinner = false;
+    private boolean m_includeHitCount = false;
 
-    public TextSearchPanel(String[] attr, ItemRegistry registry) {
-        searchAttr = attr;
+    private boolean m_autoIndex;
+    
+    public TextSearchPanel(String[] attr, ItemRegistry registry, boolean autoIndex) {
+        m_searchAttr = attr;
+        m_autoIndex = autoIndex;
         FocusManager fmanager = registry.getFocusManager();
         focus = fmanager.getDefaultFocusSet();
         FocusSet search = registry.getFocusManager()
@@ -78,31 +91,42 @@ public class TextSearchPanel extends JPanel
     
     public TextSearchPanel(String[] attr, ItemRegistry registry, 
             TextSearchFocusSet searchSet, FocusSet focusSet) {
-        searchAttr = attr;
+        this(attr,registry,searchSet,focusSet,true);
+    } //
+    
+    public TextSearchPanel(String[] attr, ItemRegistry registry, 
+            TextSearchFocusSet searchSet, FocusSet focusSet, boolean autoIndex) {
+        m_searchAttr = attr;
+        m_autoIndex = autoIndex;
         searcher = searchSet;
         focus = focusSet;
         init(registry);
     } //
 
     private void init(ItemRegistry registry) {
-        // add a listener to dynamically build search index
-        registry.addItemRegistryListener(new ItemRegistryListener() {
-            public void registryItemAdded(VisualItem item) {
-                if ( !(item instanceof NodeItem) ) return;
-                for ( int i=0; i < searchAttr.length; i++ )
-                    searcher.index(item.getEntity(), searchAttr[i]);
-                searchUpdate();
-            } //
-            public void registryItemRemoved(VisualItem item) {
-                if ( !(item instanceof NodeItem) ) return;
-//                for ( int i=0; i < searchAttr.length; i++ )
-//                    searcher.remove(item.getEntity(), searchAttr[i]);
-//                searchUpdate();
-            } //
-        });
+        if ( m_autoIndex ) {
+	        // add a listener to dynamically build search index
+	        registry.addItemRegistryListener(new ItemRegistryListener() {
+	            public void registryItemAdded(VisualItem item) {
+	                if ( !(item instanceof NodeItem) ) return;
+	                for ( int i=0; i < m_searchAttr.length; i++ )
+	                    searcher.index(item.getEntity(), m_searchAttr[i]);
+	                //searchUpdate();
+	            } //
+	            public void registryItemRemoved(VisualItem item) {
+	                if ( !(item instanceof NodeItem) ) return;
+//	                for ( int i=0; i < searchAttr.length; i++ )
+//  	                searcher.remove(item.getEntity(), searchAttr[i]);
+//      	        searchUpdate();
+	            } //
+	        });
+        }
         
-        queryF.getDocument().addDocumentListener(this);
-        queryF.setMaximumSize(new Dimension(100, 20));
+        queryF.addActionListener(this);
+        //queryF.getDocument().addDocumentListener(this);
+        queryF.setMaximumSize(new Dimension(200, 20));
+        queryF.setPreferredSize(new Dimension(200, 20));
+        queryF.setBorder(null);
 
         upArrow.addActionListener(this);
         upArrow.setEnabled(false);
@@ -132,24 +156,40 @@ public class TextSearchPanel extends JPanel
     } //
     
     private void initUI() {
+        this.removeAll();
         this.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
         
+        Box sb = new Box(BoxLayout.X_AXIS);
+        sb.add(Box.createHorizontalStrut(3));
+        sb.add(queryF);
+        sb.add(Box.createHorizontalStrut(3));
+        sb.add(new CloseButton());
+        sb.add(Box.createHorizontalStrut(3));
+        sb.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY));
+        sb.setMaximumSize(new Dimension(221, 20));
+        sb.setPreferredSize(new Dimension(171, 20));
+        
         Box b = new Box(BoxLayout.X_AXIS);
-        b.add(resultL);
-        b.add(Box.createHorizontalStrut(5));
-        b.add(Box.createHorizontalGlue());
-        b.add(matchL);
-        b.add(Box.createHorizontalStrut(5));
-        b.add(downArrow);
-        b.add(upArrow);
-        b.add(Box.createHorizontalStrut(5));
+        if ( m_includeHitCount ) {
+            b.add(resultL);
+            b.add(Box.createHorizontalStrut(5));
+            b.add(Box.createHorizontalGlue());
+        }
+        if ( m_includeSpinner ) {
+	        b.add(matchL);
+	        b.add(Box.createHorizontalStrut(5));
+	        b.add(downArrow);
+	        b.add(upArrow);
+	        b.add(Box.createHorizontalStrut(5));
+        }
         b.add(searchL);
-        b.add(queryF);
+        b.add(Box.createHorizontalStrut(3));
+        b.add(sb);
         
         this.add(b);
     } //
 
-    private void searchUpdate() {
+    public void searchUpdate() {
         String query = queryF.getText();
         if ( query.length() == 0 ) {
             searcher.clear();
@@ -183,6 +223,11 @@ public class TextSearchPanel extends JPanel
         validate();
     } //
     
+    public void setQuery(String query) {
+        queryF.setText(query);
+        searchUpdate();
+    } //
+    
     public void setBackground(Color bg) {
         super.setBackground(bg);
         if ( queryF  != null ) queryF.setBackground(bg);
@@ -206,23 +251,16 @@ public class TextSearchPanel extends JPanel
         if ( downArrow != null ) downArrow.setForeground(fg);
     } //
 
-    /**
-     * @see javax.swing.event.DocumentListener#changedUpdate(javax.swing.event.DocumentEvent)
-     */
+    public void setLabelText(String text) {
+        searchL.setText(text);
+    } //
+    
     public void changedUpdate(DocumentEvent e) {
         searchUpdate();
     } //
-
-    /**
-     * @see javax.swing.event.DocumentListener#insertUpdate(javax.swing.event.DocumentEvent)
-     */
     public void insertUpdate(DocumentEvent e) {
         searchUpdate();
     } //
-
-    /**
-     * @see javax.swing.event.DocumentListener#removeUpdate(javax.swing.event.DocumentEvent)
-     */
     public void removeUpdate(DocumentEvent e) {
         searchUpdate();
     } //
@@ -231,21 +269,87 @@ public class TextSearchPanel extends JPanel
      * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
      */
     public void actionPerformed(ActionEvent e) {
-        if ( matchL.getText().length() == 0 ) return;
-        if ( e.getSource() == downArrow ) {
-            m_curResult = (m_curResult + 1) % m_results.length;
-        } else if ( e.getSource() == upArrow ) {
-            m_curResult = (m_curResult - 1) % m_results.length;
-            if ( m_curResult < 0 )
-                m_curResult += m_results.length;
+        Object src = e.getSource();
+        if ( src == queryF ) {
+            searchUpdate();
+        } else if ( src == upArrow || src == downArrow ) {
+	        if ( matchL.getText().length() == 0 ) return;
+	        if ( e.getSource() == downArrow ) {
+	            m_curResult = (m_curResult + 1) % m_results.length;
+	        } else if ( e.getSource() == upArrow ) {
+	            m_curResult = (m_curResult - 1) % m_results.length;
+	            if ( m_curResult < 0 )
+	                m_curResult += m_results.length;
+	        }
+	        String label = "name"; // TODO: generalize labeling
+	        matchL.setText((m_curResult+1)+"/"+m_results.length+": " +
+	                m_results[m_curResult].getAttribute(label));
+	        validate();
+	        repaint();
         }
-        String label = "name";
-        matchL.setText((m_curResult+1)+"/"+m_results.length+": " +
-                m_results[m_curResult].getAttribute(label));
-        validate();
-        repaint();
     }//
 
+    public class CloseButton extends JComponent implements MouseListener {
+        private Image normalI, hoverI;
+        private boolean hover = false;
+        
+        public CloseButton() {
+            URL nrmUrl = TextSearchPanel.class.getResource("close.png");
+            URL hovUrl = TextSearchPanel.class.getResource("close_hover.png");
+            normalI = Toolkit.getDefaultToolkit().getImage(nrmUrl);
+            hoverI = Toolkit.getDefaultToolkit().getImage(hovUrl);
+            
+            // load images immediately
+            MediaTracker tracker = new MediaTracker(this);
+    		tracker.addImage(normalI, 0);
+    		tracker.addImage(hoverI, 1);
+    		try {
+    			tracker.waitForID(0, 0);
+    			tracker.waitForID(1, 0);
+    		} catch (InterruptedException e) {
+    			e.printStackTrace();
+    		}
+    		tracker.removeImage(normalI, 0);
+    		tracker.removeImage(hoverI, 1);
+    		tracker = null;
+            
+    		// set button size
+            Dimension d = new Dimension(10,10);
+            this.setPreferredSize(d);
+            this.setMinimumSize(d);
+            this.setMaximumSize(d);
+            
+            // add callbacks
+            this.addMouseListener(this);
+        } //
+        
+        public void paintComponent(Graphics g) {
+            Image img = (hover ? hoverI : normalI);
+            g.drawImage(img,0,0,10,10,null);
+        } //
+
+        public void mouseClicked(MouseEvent arg0) {
+            setQuery(null);
+        } //
+
+        public void mousePressed(MouseEvent arg0) {
+        } //
+
+        public void mouseReleased(MouseEvent arg0) {
+        } //
+
+        public void mouseEntered(MouseEvent arg0) {
+            hover = true;
+            repaint();
+        } //
+
+        public void mouseExited(MouseEvent arg0) {
+            hover = false;
+            repaint();
+        } //
+        
+    } // end of class CloseButton
+    
     public class IconButton extends JButton {
         public IconButton(Icon icon1, Icon icon2) {
             super(icon1);

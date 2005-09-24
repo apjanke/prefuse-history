@@ -1,12 +1,14 @@
 package prefusex.lucene;
 
 import java.io.IOException;
+import java.util.HashMap;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.queryParser.MultiFieldQueryParser;
 import org.apache.lucene.queryParser.ParseException;
 import org.apache.lucene.queryParser.QueryParser;
 import org.apache.lucene.search.Hits;
@@ -29,29 +31,51 @@ public class LuceneSearcher {
     
     private Directory directory;
     private Analyzer analyzer;
-    private QueryParser parser;
+    private String[] fields;
     
 	private Searcher searcher;
 	private IndexReader reader;
     private IndexWriter writer;
     private boolean m_readMode = true;
+    private boolean m_readOnly = false;
     
+    private HashMap m_hitCountCache;
+        
     public LuceneSearcher() {
-        directory = new RAMDirectory();
+        this(new RAMDirectory(), FIELD, false);
+    } //
+    
+    public LuceneSearcher(Directory dir, String field, boolean readOnly) {
+        this(dir, new String[]{field}, readOnly);
+    } //
+    
+    public LuceneSearcher(Directory dir, String[] fields, boolean readOnly) {
+        m_hitCountCache = new HashMap();
+        directory = dir;
         analyzer = new StandardAnalyzer();
-        parser = new QueryParser(FIELD, analyzer);
+        this.fields = (String[])fields.clone();
         try {
-            writer = new IndexWriter(directory, analyzer, true);
+            // TODO check if it exists first, then create on fail
+            writer = new IndexWriter(directory, analyzer, !readOnly);
             writer.close();
+            writer = null;
         } catch (IOException e1) {
             e1.printStackTrace();
         }
-        setReadMode(false);
+        m_readOnly = readOnly;
+        if ( !readOnly ) {
+            setReadMode(false);
+        } else {
+            m_readMode = false;
+            setReadMode(true);
+        }
     } //
     
-    public void setReadMode(boolean mode) {
+    public boolean setReadMode(boolean mode) {
+        // return false if this is read-only
+        if ( m_readOnly && mode == false ) return false;
         // do nothing if already in the mode
-        if ( m_readMode == mode ) return;
+        if ( m_readMode == mode ) return true;
         // otherwise switch modes
         if ( !mode ) {
             // close any open searcher and reader
@@ -60,12 +84,14 @@ public class LuceneSearcher {
     			if ( reader   != null ) reader.close();
     		} catch ( Exception e ) {
     			e.printStackTrace();
+    			return false;
     		}
     		// open the writer
     		try {
                 writer = new IndexWriter(directory, analyzer, false);
             } catch (IOException e1) {
                 e1.printStackTrace();
+                return false;
             }
         } else {
             // optimize index and close writer
@@ -76,6 +102,7 @@ public class LuceneSearcher {
                 }
             } catch (IOException e1) {
                 e1.printStackTrace();
+                return false;
             }
             // open the reader and searcher
             try {
@@ -83,9 +110,11 @@ public class LuceneSearcher {
     	        searcher = new IndexSearcher(reader);
     	    } catch ( Exception e ) {
     	        e.printStackTrace();
+    	        return false;
     	    }
         }
         m_readMode = mode;
+        return true;
     } //
     
     /**
@@ -98,13 +127,28 @@ public class LuceneSearcher {
      */
     public Hits search(String query) throws ParseException, IOException {
         if ( m_readMode ) {
-            Query q = parser.parse(query);
+            Query q;
+            if ( fields.length == 1 ) {
+                q = QueryParser.parse(query, fields[0], analyzer);
+            } else {
+                q = MultiFieldQueryParser.parse(query, fields, analyzer);
+            }
             return searcher.search(q);
         } else {
             throw new IllegalStateException(
 	                "Searches can only be performed when " +
 	                "the LuceneSearcher is in read mode");
         }
+    } //
+    
+    public int numHits(String query) throws ParseException, IOException {
+        Integer count;
+        if ( (count=(Integer)m_hitCountCache.get(query)) == null ) {
+            Hits hits = search(query);
+            count = new Integer(hits.length());
+            m_hitCountCache.put(query, count);
+        } //
+        return count.intValue();
     } //
     
     /**
@@ -115,6 +159,7 @@ public class LuceneSearcher {
 	    if ( !m_readMode ) {
 		    try {
 				writer.addDocument(d);
+				m_hitCountCache.clear();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -140,17 +185,35 @@ public class LuceneSearcher {
     } //
     
     /**
-     * @return Returns the parser.
+     * @return Returns the fields.
      */
-    public QueryParser getQueryParser() {
-        return parser;
+    public String[] getFields() {
+        return (String[])fields.clone();
     } //
     
     /**
-     * @param parser The parser to set.
+     * @param fields The fields to set.
      */
-    public void setQueryParser(QueryParser parser) {
-        this.parser = parser;
+    public void setFields(String[] fields) {
+        this.fields = (String[])fields.clone();
+    } //
+    
+    /**
+     * @return Returns the reader.
+     */
+    public IndexReader getIndexReader() {
+        return reader;
+    } //
+    
+    /**
+     * @return Returns the searcher.
+     */
+    public Searcher getIndexSearcher() {
+        return searcher;
+    } //
+    
+    public boolean isReadOnly() {
+        return m_readOnly;
     } //
     
 } // end of class LuceneSearcher

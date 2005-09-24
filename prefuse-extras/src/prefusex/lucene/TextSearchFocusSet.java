@@ -39,19 +39,28 @@ import edu.berkeley.guir.prefuse.graph.Entity;
  */
 public class TextSearchFocusSet implements FocusSet {
 
-    private FocusListener m_listener = null;
-    private LinkedHashSet m_set = new LinkedHashSet();
-    private HashMap m_entityMap = new HashMap();
-    private String m_query = null;
-    private LuceneSearcher m_lucene = null;
+    protected FocusListener m_listener = null;
+    protected LinkedHashSet m_set = new LinkedHashSet();
+    protected HashMap m_entityMap = new HashMap();
+    protected String m_query = null;
+    protected LuceneSearcher m_lucene = null;
+    protected boolean storeTermVectors = false;
     
-    private int m_id = 1;
+    protected int m_id = 1;
     
     /**
      * Creates a new TextSearchFocusSet.
      */
     public TextSearchFocusSet() {
         m_lucene = new LuceneSearcher();
+    } //
+    
+    /**
+     * Creates a new TextSearchFocusSet with the given LuceneSearcher.
+     * @param searcher the LuceneSearcher to use.
+     */
+    public TextSearchFocusSet(LuceneSearcher searcher) {
+        m_lucene = searcher;
     } //
     
     /**
@@ -87,29 +96,48 @@ public class TextSearchFocusSet implements FocusSet {
      */
     public void search(String query) {
         m_lucene.setReadMode(true);
-        Entity[] rem = (Entity[])m_set.toArray(FocusEvent.EMPTY);
-        m_set.clear();
-        m_query = query;
+        Entity[] add, rem;
         
-        try {
-            Hits hits = m_lucene.search(query);
-            for ( int i=0; i < hits.length(); i++ ) {
-                Document d = hits.doc(i);
-                Integer id = new Integer(d.get(LuceneSearcher.ID));
-                Entity entity = (Entity)m_entityMap.get(id);
-                if ( entity != null ) {
-                    m_set.add(entity);
-                } else {
-                    System.err.println("Missing entity -- "+id);
-                }
-            }
-        } catch ( Exception e ) {
-            e.printStackTrace();
+        synchronized ( this ) {
+            rem = (Entity[])m_set.toArray(FocusEvent.EMPTY);
+	        m_set.clear();
+	        m_query = query;
+	        
+	        try {
+	            Hits hits = m_lucene.search(query);
+	            for ( int i=0; i < hits.length(); i++ ) {
+	                Entity[] entities = getMatchingEntities(hits.doc(i));
+	                for ( int j=0; j<entities.length; j++ ) {
+		                if ( entities[j] != null ) {
+		                    m_set.add(entities[j]);
+		                }
+	                }
+	            }
+	        } catch ( Exception e ) {
+	            e.printStackTrace();
+	        }
+	        
+	        add = (Entity[])m_set.toArray(FocusEvent.EMPTY);
         }
-        
-        Entity[] add = (Entity[])m_set.toArray(FocusEvent.EMPTY);
         FocusEvent fe = new FocusEvent(this, FocusEvent.FOCUS_SET, add, rem);
         m_listener.focusChanged(fe);
+    } //
+    
+    /**
+     * Given a Lucene document, finds matching entities. By default, assumes
+     * a mapped id value is included in the document. Subclasses can override
+     * this method to implement custom matching routines.
+     * @param d the Lucene document
+     * @return an Array of Entity references corresponding to the document
+     */
+    protected Entity[] getMatchingEntities(Document d) {
+        Integer id = new Integer(d.get(LuceneSearcher.ID));
+        Entity entity = (Entity)m_entityMap.get(id);
+        if ( entity == null ) {
+            // warning message. TODO: handle this more generally
+            System.err.println("Missing entity -- "+id);
+        }
+        return new Entity[] {entity};
     } //
     
     /**
@@ -121,7 +149,7 @@ public class TextSearchFocusSet implements FocusSet {
      * @param entities an Iterator over Entity instances to index
      * @param attrName the name of the attribute to index
      */
-    public void index(Iterator entities, String attrName) {
+    public synchronized void index(Iterator entities, String attrName) {
         m_lucene.setReadMode(false);
         while ( entities.hasNext() ) {
             Entity e = (Entity)entities.next();
@@ -129,7 +157,7 @@ public class TextSearchFocusSet implements FocusSet {
         }
     } //
     
-    public void index(Entity e, String attrName) {
+    public synchronized void index(Entity e, String attrName) {
         m_lucene.setReadMode(false);
         String s;
         if ( (s=e.getAttribute(attrName)) == null ) return;
@@ -137,7 +165,7 @@ public class TextSearchFocusSet implements FocusSet {
         int id = m_id++;
         
         Document d = new Document();
-        d.add(Field.Text(LuceneSearcher.FIELD, s));
+        d.add(Field.Text(LuceneSearcher.FIELD, s, storeTermVectors));
         d.add(Field.Keyword(LuceneSearcher.ID, String.valueOf(id)));
         m_lucene.addDocument(d);
         
@@ -149,9 +177,14 @@ public class TextSearchFocusSet implements FocusSet {
      * @see edu.berkeley.guir.prefuse.focus.FocusSet#clear()
      */
     public void clear() {
-        m_query = null;
-        Entity[] rem = (Entity[])m_set.toArray(FocusEvent.EMPTY);
-        m_set.clear();
+        Entity[] rem;
+        
+        synchronized ( this ) {
+            m_query = null;
+            rem = (Entity[])m_set.toArray(FocusEvent.EMPTY);
+            m_set.clear();
+        }
+        
         FocusEvent fe = new FocusEvent(this, FocusEvent.FOCUS_REMOVED, null, rem);
         m_listener.focusChanged(fe);
     } //
@@ -162,7 +195,7 @@ public class TextSearchFocusSet implements FocusSet {
      * @return an Iterator over the Entity instances matching
      * the most recent search query.
      */
-    public Iterator iterator() {
+    public synchronized Iterator iterator() {
         return m_set.iterator();
     } //
 
@@ -170,7 +203,7 @@ public class TextSearchFocusSet implements FocusSet {
      * Returns the number of matches for the most recent search query.
      * @return the number of matches for the most recent search query.
      */
-    public int size() {
+    public synchronized int size() {
         return m_set.size();
     } //
 
@@ -180,8 +213,31 @@ public class TextSearchFocusSet implements FocusSet {
      * @param entity the Entity to check for containment
      * @return true if this Entity is in the FocusSet, false otherwise
      */
-    public boolean contains(Entity entity) {
+    public synchronized boolean contains(Entity entity) {
         return m_set.contains(entity);
+    } //
+
+    /**
+     * @return Returns the backing lucene searcher.
+     */
+    public LuceneSearcher getLuceneSearcher() {
+        return m_lucene;
+    } //
+    
+    /**
+     * This is not thread safe... the map could change on you.
+     * @return Returns the entity map mapping from lucene doc ID to prefuse Entity.
+     */
+    public HashMap getEntityMap() {
+        return m_entityMap;
+    } //
+    
+    public boolean isStoreTermVectors() {
+        return storeTermVectors;
+    } //
+    
+    public void setStoreTermVectors(boolean storeTermVectors) {
+        this.storeTermVectors = storeTermVectors;
     } //
     
     // ========================================================================
