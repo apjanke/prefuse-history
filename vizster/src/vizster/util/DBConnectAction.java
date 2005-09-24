@@ -6,6 +6,7 @@ import javax.swing.AbstractAction;
 
 import vizster.Vizster;
 import vizster.VizsterDBLoader;
+import vizster.ui.LoginDialog;
 
 /**
  * Attempts a connection to a database

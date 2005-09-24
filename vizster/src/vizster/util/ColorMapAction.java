@@ -5,6 +5,7 @@ import java.awt.event.ActionEvent;
 import javax.swing.AbstractAction;
 
 import vizster.Vizster;
+import vizster.ui.VizsterMenuBar;
 
 /**
  * Updates which color map is used in attribute comparison mode

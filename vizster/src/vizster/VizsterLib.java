@@ -3,14 +3,16 @@ package vizster;
 import java.awt.Component;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.Timer;
 
 import javax.swing.JOptionPane;
 import javax.swing.UIManager;
 
+import edu.berkeley.guir.prefuse.VisualItem;
 import edu.berkeley.guir.prefuse.graph.Graph;
 import edu.berkeley.guir.prefuse.graph.io.XMLGraphReader;
 
-import vizster.util.LoginDialog;
+import vizster.ui.LoginDialog;
 
 /**
  * Library of useful routines supporting the Vizster application
@@ -91,6 +93,34 @@ public class VizsterLib {
             String laf = UIManager.getSystemLookAndFeelClassName();             
             UIManager.setLookAndFeel(laf);  
         } catch ( Exception e ) {}
+    } //
+    
+    public static final void setHighlightValue(VisualItem item, int val) {
+        if ( item == null ) return;
+        int[] value = (int[])item.getVizAttribute("highlightValue");
+        if ( value == null ) {
+            value = new int[1];
+            item.setVizAttribute("highlightValue", value);
+        }
+        value[0] = val;
+    } //
+    
+    public static final int getHighlightValue(VisualItem item) {
+        if ( item == null ) return -1;
+        int[] val = (int[])item.getVizAttribute("highlightValue");
+        return ( val==null ? 0 : val[0] );
+    } //
+    
+    private static Timer s_timer;
+    
+    public static final Timer getTimer() {
+        if ( s_timer == null )
+            s_timer = new Timer() {
+            	public void cancel() {
+            	    // do nothing, do not let others cancel the timer
+            	} //
+        	};
+        return s_timer;
     } //
     
 } // end of class VizsterLib

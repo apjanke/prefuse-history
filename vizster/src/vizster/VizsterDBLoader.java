@@ -6,8 +6,11 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Vector;
 
 import edu.berkeley.guir.prefuse.ItemRegistry;
 import edu.berkeley.guir.prefuse.graph.DefaultEdge;
@@ -29,6 +32,8 @@ import edu.berkeley.guir.prefuse.graph.event.GraphLoaderMulticaster;
  */
 public class VizsterDBLoader {
 
+	private static String PHOTOBASE = "file:///c:/vizster/photos/";
+	
     /**
      * Query for retrieving a single profile.
      */
@@ -66,7 +71,7 @@ public class VizsterDBLoader {
          "want_to_meet", "photourl"};
     
     protected String m_keyField = "uid";
-    protected int m_maxSize = 5000;
+    protected int m_maxSize = 50000;
     protected LinkedHashMap m_cache = new LinkedHashMap(m_maxSize,.75f,true) {
         public boolean removeEldestEntry(Map.Entry eldest) {
             return evict((Entity)eldest.getValue());
@@ -75,11 +80,14 @@ public class VizsterDBLoader {
     protected GraphLoaderListener m_listener;
     protected Graph m_graph;
     protected ItemRegistry m_registry;
+    protected boolean isConnected = false;
     
     private final String m_columns[];
     
     protected String m_neighborQuery;
     protected String m_edgeQuery;
+    
+    private Vector m_liveQueries;
     
     private Connection m_db;
     private PreparedStatement m_ns, m_es;
@@ -103,6 +111,7 @@ public class VizsterDBLoader {
         m_registry = registry;
         m_graph = registry.getGraph();
         m_columns = columns;
+        m_liveQueries = new Vector();
         try {
             setNeighborQuery(nQuery);
             setEdgeQuery(eQuery);
@@ -111,28 +120,81 @@ public class VizsterDBLoader {
         }
     } //
     
+    public void clear() {
+        while ( !m_liveQueries.isEmpty() ) {
+            Thread t = (Thread)m_liveQueries.remove(m_liveQueries.size()-1);
+            t.stop();
+        }
+        m_cache.clear();
+    }
+    
     public String[] getColumns() {
         return m_columns;
     } //
     
-    Thread queryThread;
-    
     public void loadNeighbors(final Node n) {
-        Runnable r = new Runnable() {
+        Thread t = new Thread("VizsterDBLoader-"+n.getAttribute("uid")) {
             public void run() {
-                prepareQuery(m_ns, n);
-                loadNodes(m_ns, n);
-                prepareQuery(m_es, n);
-                loadEdges(m_es, n);
+                PreparedStatement ns, es;
+                try {
+	                ns = prepare(m_neighborQuery);
+	                es = prepare(m_edgeQuery);
+                } catch ( SQLException sqle ) {
+                    sqle.printStackTrace();
+                    return;
+                }
+                prepareQuery(ns, n);
+                loadNodes(ns, n);
+                prepareQuery(es, n);
+                loadEdges(es, n);
+                m_liveQueries.remove(this);
             }
         };
-        if ( queryThread != null && queryThread.isAlive() ) {
-            queryThread.stop();
-            System.out.println("Stopped query thread: "+queryThread);
-        }
-        Thread t = new Thread(r);
         t.setPriority(Thread.MIN_PRIORITY);
-        queryThread = t;
+        m_liveQueries.add(t);
+        t.start();
+    } //
+    
+    public void loadNetwork(final Node n, final int hops) {
+        Thread t = new Thread() {
+            public void run() {
+                PreparedStatement ns, es;
+                try {
+	                ns = prepare(m_neighborQuery);
+	                es = prepare(m_edgeQuery);
+                } catch ( SQLException sqle ) {
+                    sqle.printStackTrace();
+                    return;
+                }
+                
+		        ArrayList queue = new ArrayList();
+		        ArrayList queue2 = new ArrayList();
+		        queue.add(n);
+		        for ( int i=0; i<hops; i++ ) {
+		            while ( !queue.isEmpty() ) {
+		                // query for neighbors and their edges
+		                Node qn = (Node)queue.remove(queue.size()-1);
+		                prepareQuery(ns, qn);
+		                loadNodes(ns, qn);
+		                prepareQuery(es, qn);
+		                loadEdges(es, qn);
+		                // load neighbors for next round of querying
+		                if ( i < hops-1 ) {
+		                    Iterator iter = qn.getNeighbors();
+		                    while ( iter.hasNext() ) {
+		                        queue2.add(iter.next());
+		                    }
+		                }
+		            }
+		            ArrayList tmp = queue;
+		            queue = queue2;
+		            queue2 = tmp;
+		        }
+		        m_liveQueries.remove(this);
+            }
+        };
+        t.setPriority(Thread.MIN_PRIORITY);
+        m_liveQueries.add(t);
         t.start();
     } //
     
@@ -147,10 +209,12 @@ public class VizsterDBLoader {
     } //
     
     public Node loadNode(ResultSet rs, Node src) throws SQLException {
-        Node node = null;
+        String uid = null;
+    	Node node = null;
         for ( int i=0; i<m_columns.length; i++ ) {
             String value = rs.getString(m_columns[i]);
             if ( i == 0 ) {
+            	uid = value;
                 Node n = (Node)m_cache.get(value);
                 if ( n != null ) return n;
                 node = new DefaultNode();
@@ -160,6 +224,11 @@ public class VizsterDBLoader {
                 node.setAttribute(m_columns[i], value);
             }
         }
+        
+        // hard override on photo lookup
+        int len = uid.length();
+        node.setAttribute("photo",PHOTOBASE+uid.charAt(len-1)+uid.charAt(len-2)+"/"+uid+".jpg");
+        
         foundNode(src, node, null);
         return node;
     } //
@@ -167,14 +236,15 @@ public class VizsterDBLoader {
     protected void foundNode(Node src, Node n, Edge e) {
         boolean inCache = false;
         String key = n.getAttribute(m_keyField);
-        if ( m_cache.containsKey(key) ) {
-            // switch n reference to original loaded version 
-            n = (Node)m_cache.get(key);
-            inCache = true;
-        } else
-            m_cache.put(key, n);
+        synchronized ( m_cache ) {
+	        if ( m_cache.containsKey(key) ) {
+	            // switch n reference to original loaded version 
+	            n = (Node)m_cache.get(key);
+	            inCache = true;
+	        } else
+	            m_cache.put(key, n);
+        }
         
-
         if (e == null && src != null )
             e = new DefaultEdge(src, n, m_graph.isDirected());
         
@@ -199,10 +269,16 @@ public class VizsterDBLoader {
     } //
     
     public Edge loadEdge(ResultSet rs) throws SQLException {
-        String id1 = rs.getString("uid1");
-        String id2 = rs.getString("uid2");
-        Node source = (Node)m_cache.get(id1);
-        Node target = (Node)m_cache.get(id2);
+        int id1 = rs.getInt("uid1");
+        int id2 = rs.getInt("uid2");
+        if ( id2 < id1 ) {
+            // swap to make sure lesser node is on the left 
+            int tmp = id2;
+            id2 = id1;
+            id1 = tmp;
+        }
+        Node source = (Node)m_cache.get(String.valueOf(id1));
+        Node target = (Node)m_cache.get(String.valueOf(id2));
         if ( source == null || target == null ) return null;
         Edge e = new DefaultEdge(source, target, m_graph.isDirected());
         boolean add = false;
@@ -284,6 +360,7 @@ public class VizsterDBLoader {
             m_ns = prepare(m_neighborQuery);
         if ( m_edgeQuery != null )
             m_es = prepare(m_edgeQuery);
+        isConnected = true;
     } //
     
     public Connection getConnection() {
@@ -320,4 +397,8 @@ public class VizsterDBLoader {
         return m_edgeQuery;
     } //
 
+    public boolean isConnected() {
+        return isConnected;
+    } //
+    
 } // end of class VizsterDatabaseLoader

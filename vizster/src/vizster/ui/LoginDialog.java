@@ -1,4 +1,4 @@
-package vizster.util;
+package vizster.ui;
 
 import java.awt.Color;
 import java.awt.Dimension;
@@ -22,6 +22,7 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 
 import vizster.Vizster;
+import vizster.util.DBConnectAction;
 
 /**
  * Login dialog for Vizster.

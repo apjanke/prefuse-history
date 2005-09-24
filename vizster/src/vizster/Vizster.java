@@ -6,22 +6,50 @@ import java.awt.Dimension;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.sql.SQLException;
 import java.util.Iterator;
+import java.util.TimerTask;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 
-import vizster.color.BrowsingColorFunction;
-import vizster.color.ComparisonColorFunction;
+import prefusex.community.CommunitySet;
+import prefusex.lucene.TextSearchFocusSet;
+import prefusex.lucene.TextSearchPanel;
+import vizster.action.AuraFilter;
+import vizster.action.CommunityConstructor;
+import vizster.action.CommunityEdgeLabeler;
+import vizster.action.CommunityFilter;
+import vizster.action.CommunityLayout;
+import vizster.action.HighlightAction;
+import vizster.action.HighlightSettingAction;
+import vizster.action.InvertToggleAction;
+import vizster.action.VizsterBrowsingColorFunction;
+import vizster.action.VizsterFontFunction;
+import vizster.action.VizsterLayout;
+import vizster.action.VizsterSizeFunction;
+import vizster.action.VizsterXRayColorFunction;
+import vizster.action.linkage.LinkageFilter;
+import vizster.action.linkage.ReleaseFixedAction;
+import vizster.action.linkage.VizsterCircleLayout;
+import vizster.controls.ExpansionControl;
+import vizster.controls.FocusRequester;
+import vizster.controls.HighlightControl;
+import vizster.controls.HighlightHoldControl;
+import vizster.controls.LinkageControl;
+import vizster.controls.ZoomStepControl;
 import vizster.render.VizsterRendererFactory;
-import vizster.util.ProfilePanel;
-import vizster.util.VizsterMenuBar;
+import vizster.ui.CommunityPanel;
+import vizster.ui.Legend;
+import vizster.ui.ProfilePanel;
+import vizster.ui.VizsterMenuBar;
 import edu.berkeley.guir.prefuse.Display;
-import edu.berkeley.guir.prefuse.EdgeItem;
 import edu.berkeley.guir.prefuse.FocusManager;
 import edu.berkeley.guir.prefuse.ItemRegistry;
 import edu.berkeley.guir.prefuse.NodeItem;
@@ -30,16 +58,18 @@ import edu.berkeley.guir.prefuse.action.Action;
 import edu.berkeley.guir.prefuse.action.ActionMap;
 import edu.berkeley.guir.prefuse.action.ActionSwitch;
 import edu.berkeley.guir.prefuse.action.RepaintAction;
+import edu.berkeley.guir.prefuse.action.animate.LocationAnimator;
 import edu.berkeley.guir.prefuse.action.animate.PolarLocationAnimator;
+import edu.berkeley.guir.prefuse.action.animate.SizeAnimator;
 import edu.berkeley.guir.prefuse.action.assignment.Layout;
 import edu.berkeley.guir.prefuse.action.filter.FisheyeGraphFilter;
+import edu.berkeley.guir.prefuse.action.filter.GarbageCollector;
 import edu.berkeley.guir.prefuse.activity.ActionList;
 import edu.berkeley.guir.prefuse.activity.SlowInSlowOutPacer;
 import edu.berkeley.guir.prefuse.event.FocusEvent;
 import edu.berkeley.guir.prefuse.event.FocusListener;
 import edu.berkeley.guir.prefuse.focus.DefaultFocusSet;
 import edu.berkeley.guir.prefuse.focus.FocusSet;
-import edu.berkeley.guir.prefuse.focus.PrefixSearchFocusSet;
 import edu.berkeley.guir.prefuse.graph.DefaultGraph;
 import edu.berkeley.guir.prefuse.graph.Entity;
 import edu.berkeley.guir.prefuse.graph.Graph;
@@ -47,16 +77,12 @@ import edu.berkeley.guir.prefuse.graph.GraphLib;
 import edu.berkeley.guir.prefuse.graph.Node;
 import edu.berkeley.guir.prefuse.graph.event.GraphLoaderListener;
 import edu.berkeley.guir.prefuse.graph.external.GraphLoader;
-import edu.berkeley.guir.prefuse.util.PrefixSearchPanel;
+import edu.berkeley.guir.prefuse.util.display.DisplayLib;
 import edu.berkeley.guir.prefusex.controls.DragControl;
 import edu.berkeley.guir.prefusex.controls.FocusControl;
-import edu.berkeley.guir.prefusex.controls.NeighborHighlightControl;
 import edu.berkeley.guir.prefusex.controls.PanControl;
 import edu.berkeley.guir.prefusex.controls.ZoomControl;
-import edu.berkeley.guir.prefusex.force.DragForce;
 import edu.berkeley.guir.prefusex.force.ForceSimulator;
-import edu.berkeley.guir.prefusex.force.NBodyForce;
-import edu.berkeley.guir.prefusex.force.SpringForce;
 import edu.berkeley.guir.prefusex.layout.ForceDirectedLayout;
 import edu.berkeley.guir.prefusex.layout.FruchtermanReingoldLayout;
 
@@ -77,6 +103,11 @@ public class Vizster extends JFrame {
     public static final String CLICK_KEY  = "clicked";
     public static final String MOUSE_KEY  = "moused";
     public static final String SEARCH_KEY = "search";
+    public static final String HIGHLIGHT_KEY = "highlight";
+    public static final String COMMUNITY_KEY = "community";
+    
+    // names of additional item classes
+    public static final String AURA_CLASS = "aura";
     
     // modes the interface can be in
     public static final int BROWSE_MODE = 0;
@@ -84,21 +115,22 @@ public class Vizster extends JFrame {
     
     // prefuse architecture components
     private ItemRegistry registry;
-    private ActionList redraw, forces, altForces, altAnimate, filter;
+    private ActionList redraw, forces, altForces, altAnimate, filter, magnify;
+    private ActionList aura, community, highlight, linkLayout, unfix, border;
     private VizsterDBLoader loader;
-    private boolean useDatabase;
-    private String datafile;
+    private boolean useDatabase, xrayMode = false;
     private VizsterRendererFactory renderers;
-    private ForceSimulator fsim;
     private ActionMap actionMap;
     
     // control if layout remains animated
     private boolean animate = true;
     
     // ui components
-    private Display display;
-    private ProfilePanel profile;
-    private PrefixSearchPanel searcher;
+    private VizsterDisplay display;
+    private ProfilePanel profilePanel;
+    private JPanel container;
+    private TextSearchPanel searchPanel;
+    private CommunityPanel communityPanel;
     
     // number of login attempts before application exits
     private int loginRetries = 5;
@@ -141,21 +173,26 @@ public class Vizster extends JFrame {
         super("Vizster");
         
         // determine input method
-        this.datafile = datafile;
         this.useDatabase = (datafile==null);
         
         // create the registry
         registry = new ItemRegistry(new DefaultGraph());
+        registry.setItemComparator(new VizsterItemComparator());
+        registry.addItemClass(AURA_CLASS, DecoratorItem.class);
         
         // initialize focus handling
         // -We already get a default focus set, use it for double-clicked nodes
         // -Add another set for nodes that are single-clicked, to show profiles
-        // -Add another set for nodes moused-over, providing highlights
+        // -Add another set for nodes moused-over
+        // -Add another set for controlling highlight status
+        // -Add another set for sets of automatically-determined communities
         // -Add another set for keyword search hits
         FocusManager fmanager = registry.getFocusManager();
         fmanager.putFocusSet(CLICK_KEY, new DefaultFocusSet());
         fmanager.putFocusSet(MOUSE_KEY, new DefaultFocusSet());
-        final PrefixSearchFocusSet searchSet = new PrefixSearchFocusSet();
+        fmanager.putFocusSet(HIGHLIGHT_KEY, new DefaultFocusSet());
+        fmanager.putFocusSet(COMMUNITY_KEY, new CommunitySet(true));
+        final TextSearchFocusSet searchSet = new TextSearchFocusSet();
         fmanager.putFocusSet(SEARCH_KEY, searchSet);
         
         if ( useDatabase ) {
@@ -164,39 +201,53 @@ public class Vizster extends JFrame {
 	        // register update listener with graph loader
 	        loader.addGraphLoaderListener(new GraphLoaderListener() {
 	            public void entityLoaded(GraphLoader loader, Entity e) {
-	                filter.runNow(); forces.runNow();
+	                filter.runNow();
 	            } //
 	            public void entityUnloaded(GraphLoader loader, Entity e) {
-	                filter.runNow(); forces.runNow();
+	                filter.runNow();
 	            } //
 	        });
         }
         
         // initialize user interface components
         // set up the primary display
-        display = new VizsterDisplay(registry);
+        display = new VizsterDisplay(this);
         display.setSize(700,650);
         // create the panel which shows friendster profile data
-        profile = new ProfilePanel(this);
+        profilePanel = new ProfilePanel(this);
         // create the search panel
-        searcher = new PrefixSearchPanel(VizsterDBLoader.ALL_COLUMNS,
+        searchPanel = new TextSearchPanel(VizsterDBLoader.ALL_COLUMNS,
                 registry, searchSet, fmanager.getFocusSet(CLICK_KEY));
+        // create the community explorer panel
+        communityPanel = new CommunityPanel(this);
         
         // initialize the prefuse renderers and action lists
         initPrefuse();
         
         // initialize the display's control listeners
-        display.addControlListener(new FocusControl(2));
+        display.addControlListener(new ExpansionControl(2));
         display.addControlListener(new FocusControl(1, CLICK_KEY));
-        display.addControlListener(new FocusControl(0, MOUSE_KEY));
-        display.addControlListener(new NeighborHighlightControl(redraw));
-        display.addControlListener(new DragControl(true, true));
+        display.addControlListener(new HighlightControl(highlight, MOUSE_KEY));
+        display.addControlListener(new HighlightHoldControl(highlight,
+                HIGHLIGHT_KEY, this, HighlightHoldControl.CLICK_AND_HOLD_MODE));
+        //display.addControlListener(new HighlightFreezeControl(highlight, HIGHLIGHT_KEY));
+        display.addControlListener(new LinkageControl(this));
+        display.addControlListener(new DragControl(redraw, true));
         display.addControlListener(new PanControl(true));
+        //display.addControlListener(new MagnifyControl(this, MagnifyControl.CLICK_AND_HOLD_MODE));
+        display.addMouseListener(new FocusRequester());
         
         // add a zoom control that works everywhere
         ZoomControl zc = new ZoomControl(true);
+        zc.setMaxScale(10.0);
+        zc.setMinScale(0.1);
         display.addMouseListener(zc);
         display.addMouseMotionListener(zc);
+        
+        // add click-only zoom controls
+        ZoomStepControl zsc = new ZoomStepControl(this);
+        display.addMouseListener(zsc);
+        display.addMouseMotionListener(zsc);
         
         // set up the JFrame
         setJMenuBar(new VizsterMenuBar(this));
@@ -233,7 +284,8 @@ public class Vizster extends JFrame {
         }
         
         // attempt to login to database if necessary
-        if ( useDatabase && !VizsterLib.authenticate(this, loginRetries) ) {
+        if ( useDatabase && !(loader.isConnected() ||
+                VizsterLib.authenticate(this, loginRetries)) ) {
             //System.exit(0); // user canceled login so exit
             return;
         }
@@ -288,19 +340,27 @@ public class Vizster extends JFrame {
             } //
         });
         
-        JScrollPane scroller = new JScrollPane(profile);
+        JScrollPane scroller = new JScrollPane(profilePanel);
         scroller.setHorizontalScrollBarPolicy(
                 JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scroller.setVerticalScrollBarPolicy(
                 JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        Dimension pd = profile.getPreferredSize();
+        Dimension pd = profilePanel.getPreferredSize();
         scroller.setPreferredSize(new Dimension(300,pd.height));
         
-        searcher.setBorder(BorderFactory.createEmptyBorder(4,4,4,4));
+        searchPanel.setBorder(BorderFactory.createEmptyBorder(4,4,4,4));
+        communityPanel.setBorder(BorderFactory.createEmptyBorder(4,4,4,4));
+        
+        container = new JPanel();
+        container.setLayout(new BoxLayout(container, BoxLayout.X_AXIS));
+        container.add(communityPanel);
+        container.add(Box.createHorizontalGlue());
+        container.add(searchPanel);
+        container.setBackground(Color.WHITE);
         
         JPanel main = new JPanel(new BorderLayout());
         main.add(display, BorderLayout.CENTER);
-        main.add(searcher, BorderLayout.SOUTH);
+        main.add(container, BorderLayout.SOUTH);
         
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
                 false, main, scroller);
@@ -312,16 +372,18 @@ public class Vizster extends JFrame {
     } //
     
     public void centerDisplay() {
-        Iterator iter = registry.getDefaultFocusSet().iterator();
-        if ( iter.hasNext() ) {
-            Node f = (Node)iter.next();
-            NodeItem n = registry.getNodeItem(f);
-            if ( n == null ) {
-                n = registry.getNodeItem(f,true);
-                filter.runNow();
-            }
-            display.animatePanToAbs(n.getLocation(), 2000);
-        }
+        Point2D centroid = DisplayLib.getCentroid(registry,
+                registry.getDefaultFocusSet().iterator());
+        centerDisplay(centroid);
+    } //
+    
+    public void centerDisplay(Point2D p) {
+        display.animatePanToAbs(p, 2000);
+    } //
+    
+    public void resetDisplay() {
+        Rectangle2D b = DisplayLib.getNodeBounds(registry,50);
+        DisplayLib.fitViewToBounds(display, b);
     } //
     
     public void unzoom() {
@@ -330,71 +392,117 @@ public class Vizster extends JFrame {
         display.animateZoom(new Point2D.Float(x,y),0,2000);
     } //
     
+    // ========================================================================
+    // == PREFUSE INITIALIZATION ==============================================
+    
     private void initPrefuse() {
+        // initialize action map
+        actionMap = new ActionMap();
+        
         // initialize renderers
-        renderers = new VizsterRendererFactory(display);
-        renderers.setBrowseMode(true);
+        renderers = new VizsterRendererFactory(this);
         registry.setRendererFactory(renderers);
         
-        // initialize the force simulator
-        fsim = new ForceSimulator();
-        fsim.addForce(new NBodyForce(-1.5f, -1f, 0.9f));
-        final SpringForce springF = new SpringForce(2E-5f, 150f);
-        fsim.addForce(springF);
-        fsim.addForce(new DragForce(-0.005f));
+        // ====================================================================
+        // == set up actions ==================================================
         
-        // set up actions
-        FisheyeGraphFilter      feyeFilter = new FisheyeGraphFilter(-1);
-        BrowsingColorFunction   bcolorFunc = new BrowsingColorFunction();
-        ComparisonColorFunction ccolorFunc = new ComparisonColorFunction();
+        // filters
+        FisheyeGraphFilter feyeFilter = new FisheyeGraphFilter(-1,true,false);
+        AuraFilter         auraFilter = new AuraFilter();
+        GarbageCollector   gcFilter   = new GarbageCollector(new String[]
+          {ItemRegistry.DEFAULT_NODE_CLASS, ItemRegistry.DEFAULT_EDGE_CLASS});
+        feyeFilter.setEdgesInteractive(false);
         
+        // layout routines
         Layout frLayout = new FruchtermanReingoldLayout(400);
-        Layout fdLayout = new ForceDirectedLayout(fsim, false, false) {
-            private float normal = 2E-5f;
-            private float slack1 = 2E-6f;
-            private float slack2 = 2E-7f;
-            protected float getSpringLength(EdgeItem e) {
-                NodeItem n1 = (NodeItem)e.getFirstNode();
-                NodeItem n2 = (NodeItem)e.getSecondNode();
-                int minE = Math.min(n1.getEdgeCount(),n2.getEdgeCount());
-                double doi = Math.max(n1.getDOI(), n2.getDOI());
-                return ( minE == 1 ? 75.f : (doi==0? 200.f : 100.f));
-            } //
-            protected float getSpringCoefficient(EdgeItem e) {
-                NodeItem n1 = (NodeItem)e.getFirstNode();
-                NodeItem n2 = (NodeItem)e.getSecondNode();
-                int maxE = Math.max(n1.getEdgeCount(),n2.getEdgeCount());
-                if ( maxE <= 80 )
-                    return normal;
-                else if ( maxE <= 180 )
-                    return slack1;
-                else
-                    return slack2;
-            } //
-        };
+        Layout fdLayout = new VizsterLayout();
         
+        // colors and highlights
+        VizsterBrowsingColorFunction vcolor = new VizsterBrowsingColorFunction();
+        VizsterXRayColorFunction xcolor = new VizsterXRayColorFunction();
+        HighlightAction         hilite = new HighlightAction(2);
+        
+        // community actions
+        CommunityFilter      commFilter    = new CommunityFilter(COMMUNITY_KEY);
+        CommunityEdgeLabeler commLabeler   = new CommunityEdgeLabeler(COMMUNITY_KEY);
+        CommunityConstructor commConstruct = new CommunityConstructor(COMMUNITY_KEY, vcolor);
+        
+        // initialize basic recoloring-drawing action lists
         ActionSwitch colorSwitch = new ActionSwitch(
-                new Action[] {bcolorFunc, ccolorFunc}, 0);
+                new Action[] {vcolor, xcolor}, 0);
         
-        actionMap = new ActionMap();
-        actionMap.put("filter", feyeFilter);
-        actionMap.put("browseColors", bcolorFunc);
-        actionMap.put("compareColors", ccolorFunc);
-        actionMap.put("colorSwitch", colorSwitch);
-        actionMap.put("dynamicForces", fdLayout);
-        actionMap.put("staticForces", frLayout);
+        // ====================================================================
+        // == set up actions lists ============================================
         
-        // initialize basic recoloring-drawing action list
-        redraw = new ActionList(registry, 0);
+        // initialize basic redraw action
+        redraw = new ActionList(registry);
+        redraw.add(new CommunityLayout(COMMUNITY_KEY));
         redraw.add(colorSwitch);
+        redraw.add(actionMap.put("fonts", new VizsterFontFunction()));
         redraw.add(new RepaintAction());
+        
+        // initialize lists for linkage mode
+        ActionList linkageList = new ActionList(registry);
+        linkageList.add(new HighlightSettingAction(-1));
+        linkageList.add(new LinkageFilter(false));
+        
+        // initialize list for community filtering
+        community = new ActionList(registry);
+        community.add(commConstruct);
+        community.add(commFilter);
+        community.add(commLabeler);
+        
+        // experimental link view layout / animation
+        linkLayout = new ActionList(registry);
+        linkLayout.add(new VizsterCircleLayout());
+        
+        ActionList linkAnimate = new ActionList(registry,800);
+        linkAnimate.setPacingFunction(new SlowInSlowOutPacer());
+        linkAnimate.add(new LocationAnimator());
+        linkAnimate.alwaysRunAfter(linkLayout);
+        
+        unfix = new ActionList(registry);
+        unfix.add(new ReleaseFixedAction());
+        
+        ActionList unfixAnimate = new ActionList(registry,800);
+        unfixAnimate.add(new LocationAnimator());
+        unfixAnimate.alwaysRunAfter(unfix);
+        // -----
         
         // initialize the filter action list
         filter = new ActionList(registry);
         filter.add(feyeFilter);
+        filter.add(linkageList);
+        filter.add(gcFilter);
+        filter.add(commFilter);
+        filter.add(commLabeler);
+        filter.add(auraFilter);
         filter.add(colorSwitch);
         
-        // initilaize the forces action list
+        // initialize action list for filtering search auras
+        aura = new ActionList(registry);
+        aura.add(auraFilter);
+        aura.add(hilite);
+        aura.add(colorSwitch);
+        
+        // initialize action list for highlighting
+        highlight = new ActionList(registry);
+        highlight.add(hilite);
+        
+        // intialize lists for magnification
+        magnify = new ActionList(registry);
+        magnify.add(actionMap.put("size", new VizsterSizeFunction()));
+        
+        ActionList magnifyAnimate = new ActionList(registry, 1000);
+        magnifyAnimate.add(new SizeAnimator());
+        magnifyAnimate.alwaysRunAfter(magnify);
+        // -----
+        
+        // initialize lists for outline flashing
+        border = new ActionList(registry,350);
+        border.add(new InvertToggleAction());
+        
+        // initilaize the layout, including communities
         forces = new ActionList(registry,-1,20);
         forces.add(new AbstractAction() {
             public void run(ItemRegistry registry, double frac) {                
@@ -416,24 +524,61 @@ public class Vizster extends JFrame {
         altForces.add(frLayout);
         altForces.add(colorSwitch);
         
+        // animator between static configurations
         altAnimate = new ActionList(registry, 2000, 20);
         altAnimate.setPacingFunction(new SlowInSlowOutPacer());
         altAnimate.add(new PolarLocationAnimator());
-        altAnimate.add(new RepaintAction());
+        altAnimate.add(redraw);
         
-        // initialize focus listeners
-        FocusSet defaultSet = registry.getDefaultFocusSet();
+        // put actions into action map
+        actionMap.put("filter", feyeFilter);
+        actionMap.put("linkSwitch", linkageList);
+        actionMap.put("browseColors", vcolor);
+        actionMap.put("compareColors", xcolor);
+        actionMap.put("colorSwitch", colorSwitch);
+        actionMap.put("dynamicForces", fdLayout);
+        actionMap.put("staticForces", frLayout);
+        actionMap.put("highlight", hilite);
+        actionMap.put("commConstruct", commConstruct);
+        
+        // ====================================================================
+        // == initialize focus listeners ======================================
+        
+        final FocusSet defaultSet = registry.getDefaultFocusSet();
         defaultSet.addFocusListener(new FocusListener() {
             public void focusChanged(FocusEvent e) {
-                // unfix previous center item
-                NodeItem n = registry.getNodeItem((Node)e.getFirstRemoved());
-                if ( n != null ) n.setFixed(false);
+                // unfix previous center items
+                Entity[] removed = e.getRemovedFoci();
+                for ( int i=0; i < removed.length; i++) {
+                    NodeItem n = registry.getNodeItem((Node)removed[i]);
+                    if ( n != null ) { n.setFixed(false); n.setWasFixed(false); }
+                }
                 
-                centerDisplay(); // center display on the new focus
+                // set current focus as referrer for newly visible nodes
+                Node added = (Node)e.getFirstAdded();
+                NodeItem addedItem = registry.getNodeItem(added);
+                if ( addedItem != null ) {
+                    setReferrer(addedItem);
+                }
+
+                setLinkageMode(false);
                 filter.runNow(); // refilter
                 setAnimate(true);
-                if ( useDatabase )
-                    loader.loadNeighbors((Node)e.getFirstAdded());
+                
+                // load neighbors from database as necessary
+                if ( useDatabase && added != null) {
+                    loader.loadNetwork(added,2);
+                }
+                
+                if ( addedItem != null )
+                    centerDisplay(addedItem.getLocation()); // center display on the new focus
+                
+                TimerTask task = new TimerTask() {
+                    public void run() {
+                        searchPanel.searchUpdate();
+                    } //
+                };
+                VizsterLib.getTimer().schedule(task,500);
             } //
         });
         
@@ -443,14 +588,19 @@ public class Vizster extends JFrame {
             public void focusChanged(FocusEvent e) {
                 // update profile panel to show new focus
                 Node f = (Node)e.getFirstAdded();
-                profile.updatePanel(f);
+                if ( f != null )
+                    profilePanel.updatePanel(f);
+                NodeItem item = registry.getNodeItem(f);
+                if ( item != null )
+                    setReferrer(item);
             } //
         });
         
         FocusSet searcher = fmanager.getFocusSet(SEARCH_KEY);
         searcher.addFocusListener(new FocusListener() {
             public void focusChanged(FocusEvent e) {
-                redraw();
+                if (e.getAddedFoci().length>0 || e.getRemovedFoci().length>0)
+                    aura.runNow();
             } //
         });
     } //
@@ -475,30 +625,49 @@ public class Vizster extends JFrame {
     } //
     
     public ForceSimulator getForceSimulator() {
-        return fsim;
+        return ((VizsterLayout)actionMap.get("dynamicForces")).getForceSimulator();
     } //
     
     public void setMode(int mode) {
         if ( mode != BROWSE_MODE && mode != COMPARE_MODE )
             return;
         boolean b = (mode == BROWSE_MODE);
+        xrayMode = !b;
         Color bg = b ? Color.WHITE : Color.BLACK;
         Color fg = b ? Color.BLACK : Color.WHITE;
+        this.setBackground(bg);
+        this.setForeground(fg);
         display.setBackground(bg);
         display.setForeground(fg);
-        searcher.setBackground(bg);
-        searcher.setForeground(fg);
+        searchPanel.setBackground(bg);
+        searchPanel.setForeground(fg);
+        communityPanel.setBackground(bg);
+        communityPanel.setForeground(fg);
+        container.setBackground(bg);
+        container.setForeground(fg);
         ActionSwitch as = (ActionSwitch)actionMap.get("colorSwitch");
         as.setSwitchValue(b?0:1);
-        renderers.setBrowseMode(b);
+        
+        if ( !b ) {
+            VizsterXRayColorFunction cf = (VizsterXRayColorFunction)
+            	actionMap.get("compareColors");
+            Legend l = new Legend(cf.getLabels(), cf.getColorMap());
+            display.setLegend(l);
+        } else {
+            display.setLegend(null);
+        }
     } //
     
-    public ComparisonColorFunction getComparisonColorFunction() {
-        return (ComparisonColorFunction)actionMap.get("compareColors");
+    public boolean isXRayMode() {
+        return xrayMode;
     } //
     
-    public BrowsingColorFunction getBrowsingColorFunction() {
-        return (BrowsingColorFunction)actionMap.get("browseColors");
+    public VizsterXRayColorFunction getComparisonColorFunction() {
+        return (VizsterXRayColorFunction)actionMap.get("compareColors");
+    } //
+    
+    public VizsterBrowsingColorFunction getBrowsingColorFunction() {
+        return (VizsterBrowsingColorFunction)actionMap.get("browseColors");
     } //
     
     public boolean isAnimate() {
@@ -521,6 +690,61 @@ public class Vizster extends JFrame {
     public void runStaticLayout() {
         altAnimate.runAfter(altForces);
         altForces.runNow();
+    } //
+    
+    public void runFilter() {
+        filter.runNow();
+    } //
+    
+    public void constructCommunities(int idx) {
+    	((CommunityConstructor)actionMap.get("commConstruct")).setIndex(idx);
+        community.runNow();
+    } //
+    
+    public void setReferrer(NodeItem item) {
+        ((ForceDirectedLayout)actionMap.get("dynamicForces"))
+    		.setReferrer(item);
+    } //
+    
+    public void setMagnify(boolean state) {
+        VizsterSizeFunction sizeFunc = (VizsterSizeFunction)actionMap.get("size");
+        sizeFunc.setMagnify(state);
+        magnify.runNow();
+        if ( state )
+            border.runNow();
+    } //
+    
+    public void setLinkageMode(boolean state) {
+        Action linkage = (Action)actionMap.get("linkSwitch");
+        boolean enabled = linkage.isEnabled();
+        if ( state != enabled ) {
+            highlight.setEnabled(!state);
+            linkage.setEnabled(state);
+            filter.runNow();
+            if ( !state ) {
+                highlight.runNow();
+            }
+        }
+    } //
+    
+    public void search(String query) {
+        searchPanel.setQuery(query);
+    } //
+    
+    public void setShowImages(boolean s) {
+        ((VizsterRendererFactory)registry.getRendererFactory()).setDrawImages(s);
+    } //
+    
+    public void setLinkHighlighting(boolean s) {
+        ((HighlightAction)actionMap.get("highlight")).setShowEdges(s);
+    } //
+    
+    public void setPassHighlightTroughFocus(boolean s) {
+        ((HighlightAction)actionMap.get("highlight")).setSkipFoci(s);
+    } //
+    
+    public void setHighlightHops(int h) {
+        ((HighlightAction)actionMap.get("highlight")).setHops(h);
     } //
     
 } // end of class Vizster

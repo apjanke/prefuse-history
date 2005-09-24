@@ -8,6 +8,7 @@ import javax.swing.AbstractButton;
 import javax.swing.JFileChooser;
 
 import vizster.Vizster;
+import vizster.ui.VizsterMenuBar;
 
 /**
  * 

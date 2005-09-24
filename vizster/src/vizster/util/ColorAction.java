@@ -6,7 +6,7 @@ import javax.swing.AbstractAction;
 import javax.swing.JToggleButton;
 
 import vizster.Vizster;
-import vizster.color.ComparisonColorFunction;
+import vizster.action.VizsterXRayColorFunction;
 
 /**
  * Updates which attribute is visualized in the attribute comparison mode
@@ -17,6 +17,7 @@ import vizster.color.ComparisonColorFunction;
 public class ColorAction extends AbstractAction {
 
     private Vizster vizster;
+    private JToggleButton prev;
     
     public ColorAction(Vizster vizster) {
         this.vizster = vizster;
@@ -27,15 +28,23 @@ public class ColorAction extends AbstractAction {
      */
     public void actionPerformed(ActionEvent e) {
         JToggleButton tog = (JToggleButton)e.getSource();
+        
+        if ( prev != null && prev != tog ) {
+            prev.setSelected(false);
+            prev.putClientProperty("on", Boolean.FALSE);
+            prev = null;
+        }
+        
         Boolean onB = (Boolean)tog.getClientProperty("on");
         boolean on = (onB == null ? tog.isSelected() : !onB.booleanValue());
         if ( on ) {
             Integer attrI = (Integer)tog.getClientProperty("attr");
             tog.putClientProperty("on", Boolean.TRUE);
             int idx = attrI.intValue();
-            ComparisonColorFunction cf = vizster.getComparisonColorFunction();
+            VizsterXRayColorFunction cf = vizster.getComparisonColorFunction();
             cf.setCurrentAttribute(idx);
             vizster.setMode(Vizster.COMPARE_MODE);
+            prev = tog;
         } else {
             JToggleButton inv = (JToggleButton)tog.getClientProperty("inv");
             inv.doClick();
