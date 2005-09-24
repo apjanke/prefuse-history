@@ -294,6 +294,7 @@ public class Vizster extends JFrame {
         Node r = getInitialNode(startUID);
         registry.getDefaultFocusSet().set(r);
         registry.getFocusManager().getFocusSet(CLICK_KEY).set(r);
+        centerDisplay();
         
         filter.runNow();
         if ( animate ) {
@@ -570,9 +571,10 @@ public class Vizster extends JFrame {
                     loader.loadNetwork(added,2);
                 }
                 
-                if ( addedItem != null )
+                if ( addedItem != null ) {
                     centerDisplay(addedItem.getLocation()); // center display on the new focus
-                
+                }
+                    
                 TimerTask task = new TimerTask() {
                     public void run() {
                         searchPanel.searchUpdate();
