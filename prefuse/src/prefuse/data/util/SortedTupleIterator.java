@@ -46,7 +46,7 @@ public class SortedTupleIterator implements Iterator {
      * Initialize this iterator for the given source iterator and
      * comparator.
      * @param iter the source iterator of tuples
-     * @param size the expected number of tuples in the iterator
+     * @param c the comparator to use for sorting
      */
     public void init(Iterator iter, Comparator c) {
         m_tuples.clear();
@@ -80,7 +80,7 @@ public class SortedTupleIterator implements Iterator {
     /**
      * Throws an UnsupportedOperationException
      * @see java.util.Iterator#remove()
-     * @throws UnsuuportedOperationException
+     * @throws UnsupportedOperationException
      */
     public void remove() {
         throw new UnsupportedOperationException();
